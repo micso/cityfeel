@@ -1,2 +1,9 @@
 /.venv/
 /.idea/
+
+# Environment variables
+.env
+
+# Database
+*.sqlite3
+db.sqlite3
