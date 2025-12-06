@@ -6,21 +6,27 @@ Aplikacja Django do analizy sentymentu i opinii o miastach.
 
 Przed rozpoczęciem upewnij się, że masz zainstalowane:
 
-- **Docker & Docker Compose** - dla bazy danych PostgreSQL
+- **Docker & Docker Compose** - dla PostgreSQL i aplikacji Django (zalecane)
+
+**LUB** (dla uruchomienia lokalnego bez Dockera):
+
 - **uv** - menedżer pakietów Python (automatycznie zainstaluje Python 3.13)
+- **GDAL, GEOS, PROJ** - biblioteki systemowe dla GeoDjango
 
 ## Instalacja
 
-Wykonaj poniższe kroki, aby skonfigurować projekt na swoim komputerze:
+### Opcja A: Uruchomienie z Docker (ZALECANE) 🐳
 
-### 1. Sklonuj repozytorium
+Najłatwiejszy sposób - wszystko działa automatycznie, bez instalacji dodatkowych bibliotek.
+
+#### 1. Sklonuj repozytorium
 
 ```bash
 git clone <repository-url>
 cd cityfeel
 ```
 
-### 2. Skonfiguruj zmienne środowiskowe
+#### 2. Skonfiguruj zmienne środowiskowe
 
 Skopiuj przykładowy plik środowiskowy i zaktualizuj go swoimi danymi:
 
@@ -31,10 +37,6 @@ cp .env.example .env
 Edytuj plik `.env` i ustaw dane dostępowe do bazy danych:
 
 ```env
-POSTGRES_DB=cityfeel
-POSTGRES_USER=cityfeel_user
-POSTGRES_PASSWORD=twoje_bezpieczne_haslo
-
 DB_NAME=cityfeel
 DB_USER=cityfeel_user
 DB_PASSWORD=twoje_bezpieczne_haslo
@@ -42,44 +44,102 @@ DB_HOST=localhost
 DB_PORT=5432
 ```
 
-### 3. Zainstaluj zależności Python
+#### 3. Uruchom aplikację
+
+Zbuduj i uruchom kontenery (PostgreSQL + Django):
+
+```bash
+docker compose up --build
+```
+
+Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
+
+#### 4. Wykonaj migracje (tylko przy pierwszym uruchomieniu)
+
+W nowym terminalu:
+
+```bash
+docker compose exec web uv run cityfeel/manage.py migrate
+```
+
+#### 5. Utwórz superużytkownika (opcjonalnie)
+
+```bash
+docker compose exec web uv run cityfeel/manage.py createsuperuser
+```
+
+Panel administracyjny: `http://127.0.0.1:8000/admin/`
+
+---
+
+### Opcja B: Uruchomienie lokalne (bez Dockera)
+
+⚠️ **Wymaga instalacji bibliotek systemowych GDAL, GEOS, PROJ**
+
+#### 1. Sklonuj repozytorium
+
+```bash
+git clone <repository-url>
+cd cityfeel
+```
+
+#### 2. Zainstaluj biblioteki systemowe GeoDjango
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get update
+sudo apt-get install -y gdal-bin libgdal-dev libgeos-dev libproj-dev binutils
+```
+
+**macOS:**
+```bash
+brew install gdal geos proj
+```
+
+#### 3. Skonfiguruj zmienne środowiskowe
+
+```bash
+cp .env.example .env
+```
+
+Edytuj `.env`:
+
+```env
+DB_NAME=cityfeel
+DB_USER=cityfeel_user
+DB_PASSWORD=twoje_bezpieczne_haslo
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+#### 4. Zainstaluj zależności Python
 
 ```bash
 uv sync
 ```
 
-### 4. Uruchom bazę danych PostgreSQL
-
-Uruchom kontener PostgreSQL w tle:
+#### 5. Uruchom bazę danych PostgreSQL
 
 ```bash
-docker-compose up -d
+docker compose up postgres -d
 ```
 
-Sprawdź, czy baza danych działa:
+#### 6. Wykonaj migracje
 
 ```bash
-docker-compose ps
+uv run cityfeel/manage.py migrate
 ```
 
-### 5. Wykonaj migracje bazy danych
+#### 7. Utwórz superużytkownika
 
 ```bash
-python cityfeel/manage.py migrate
+uv run cityfeel/manage.py createsuperuser
 ```
 
-### 6. Utwórz superużytkownika (opcjonalnie)
-
-Aby uzyskać dostęp do panelu administracyjnego Django:
+#### 8. Uruchom serwer deweloperski
 
 ```bash
-python cityfeel/manage.py createsuperuser
-```
-
-### 7. Uruchom serwer deweloperski
-
-```bash
-python cityfeel/manage.py runserver
+uv run cityfeel/manage.py runserver
 ```
 
 Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
@@ -88,51 +148,112 @@ Panel administracyjny: `http://127.0.0.1:8000/admin/`
 
 ## Przydatne komendy
 
-### Zarządzanie Docker i bazą danych
+### Docker - zarządzanie aplikacją
 
 ```bash
-# Zatrzymaj bazę danych
-docker-compose down
+# Uruchom wszystkie kontenery (PostgreSQL + Django)
+docker compose up
 
-# Zatrzymaj i usuń wszystkie dane (UWAGA: usuwa wszystkie dane z bazy!)
-docker-compose down -v
+# Uruchom w tle
+docker compose up -d
 
-# Zobacz logi PostgreSQL
-docker-compose logs -f postgres
+# Przebuduj obrazy i uruchom
+docker compose up --build
 
+# Zatrzymaj wszystkie kontenery
+docker compose down
+
+# Zatrzymaj i usuń wszystkie dane (UWAGA: usuwa dane z bazy!)
+docker compose down -v
+
+# Zobacz logi
+docker compose logs -f
+
+# Zobacz logi tylko Django
+docker compose logs -f web
+
+# Zobacz logi tylko PostgreSQL
+docker compose logs -f postgres
+
+# Uruchom tylko bazę danych
+docker compose up postgres -d
+```
+
+### Docker - komendy Django
+
+```bash
+# Uruchom migracje
+docker compose exec web uv run cityfeel/manage.py migrate
+
+# Utwórz migracje po zmianach w modelach
+docker compose exec web uv run cityfeel/manage.py makemigrations
+
+# Utwórz superużytkownika
+docker compose exec web uv run cityfeel/manage.py createsuperuser
+
+# Uruchom shell Django
+docker compose exec web uv run cityfeel/manage.py shell
+
+# Uruchom testy
+docker compose exec web uv run cityfeel/manage.py test
+
+# Zbierz pliki statyczne
+docker compose exec web uv run cityfeel/manage.py collectstatic
+
+# Otwórz bash w kontenerze Django
+docker compose exec web bash
+```
+
+### Docker - zarządzanie bazą danych
+
+```bash
 # Połącz się z bazą PostgreSQL przez psql
 docker exec -it cityfeel_postgres psql -U cityfeel_user -d cityfeel
 ```
 
-### Komendy Django
+### PostGIS
+
+```bash
+# Weryfikacja instalacji PostGIS
+docker exec cityfeel_postgres psql -U cityfeel_user -d cityfeel -c "SELECT PostGIS_Version();"
+
+# Sprawdzenie zainstalowanych rozszerzeń przestrzennych
+docker exec cityfeel_postgres psql -U cityfeel_user -d cityfeel -c "\dx"
+```
+
+### Komendy Django (uruchomienie lokalne bez Dockera)
 
 ```bash
 # Utwórz nową aplikację Django
-python cityfeel/manage.py startapp <nazwa_aplikacji>
+uv run cityfeel/manage.py startapp <nazwa_aplikacji>
 
 # Utwórz migracje po zmianach w modelach
-python cityfeel/manage.py makemigrations
+uv run cityfeel/manage.py makemigrations
 
 # Zastosuj migracje
-python cityfeel/manage.py migrate
+uv run cityfeel/manage.py migrate
 
 # Utwórz superużytkownika
-python cityfeel/manage.py createsuperuser
+uv run cityfeel/manage.py createsuperuser
 
 # Uruchom serwer deweloperski
-python cityfeel/manage.py runserver
+uv run cityfeel/manage.py runserver
 
 # Uruchom testy
-python cityfeel/manage.py test
+uv run cityfeel/manage.py test
 
 # Zbierz pliki statyczne
-python cityfeel/manage.py collectstatic
+uv run cityfeel/manage.py collectstatic
 ```
 
 ## Technologie
 
 Ten projekt wykorzystuje:
 - **Django 5.2.7** - Framework webowy
-- **PostgreSQL 16** - Baza danych
+- **GeoDjango** - Rozszerzenie Django dla danych geograficznych
+- **PostgreSQL 16 z PostGIS 3.6** - Baza danych z rozszerzeniem przestrzennym
+- **Docker & Docker Compose** - Konteneryzacja aplikacji
+- **uv** - Szybki menedżer pakietów Python
+- **Pillow** - Obsługa obrazów (avatary użytkowników)
 - **psycopg2** - Adapter PostgreSQL dla Python
 - **python-dotenv** - Zarządzanie zmiennymi środowiskowymi

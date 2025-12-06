@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
     'auth.apps.AuthConfig'
 ]
 
@@ -80,7 +81,7 @@ WSGI_APPLICATION = 'cityfeel.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': os.getenv('DB_NAME', 'cityfeel'),
         'USER': os.getenv('DB_USER', 'cityfeel_user'),
         'PASSWORD': os.getenv('DB_PASSWORD', 'changeme123'),
