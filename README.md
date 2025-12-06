@@ -49,7 +49,7 @@ DB_PORT=5432
 Zbuduj i uruchom kontenery (PostgreSQL + Django):
 
 ```bash
-docker compose up --build
+docker compose --profile server up --build
 ```
 
 Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
@@ -152,22 +152,22 @@ Panel administracyjny: `http://127.0.0.1:8000/admin/`
 
 ```bash
 # Uruchom wszystkie kontenery (PostgreSQL + Django)
-docker compose up
+docker compose --profile server up
 
 # Uruchom w tle
-docker compose up -d
+docker compose --profile server up -d
 
 # Przebuduj obrazy i uruchom
-docker compose up --build
+docker compose --profile server up --build
 
 # Zatrzymaj wszystkie kontenery
-docker compose down
+docker compose --profile server down
 
 # Zatrzymaj i usuń wszystkie dane (UWAGA: usuwa dane z bazy!)
-docker compose down -v
+docker compose --profile server down -v
 
 # Zobacz logi
-docker compose logs -f
+docker compose --profile server logs -f
 
 # Zobacz logi tylko Django
 docker compose logs -f web
