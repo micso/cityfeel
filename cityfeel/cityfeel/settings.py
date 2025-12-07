@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'auth.apps.AuthConfig',
     'map.apps.MapConfig',
+    'emotions.apps.EmotionsConfig',
 ]
 
 MIDDLEWARE = [
