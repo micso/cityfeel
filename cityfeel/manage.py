@@ -4,6 +4,8 @@ import os
 import sys
 
 
+test = 1
+
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cityfeel.settings')
