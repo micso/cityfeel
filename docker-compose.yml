@@ -2,7 +2,7 @@ services:
   postgres:
     build:
       context: ./docker/db
-      dockerfile: ./docker/db/Dockerfile
+      dockerfile: ./Dockerfile
     container_name: cityfeel_postgres
     restart: unless-stopped
     ports:
