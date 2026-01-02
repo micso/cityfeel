@@ -71,3 +71,42 @@ class EmotionPoint(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.location.name} ({self.emotional_value}/{self.MAX_EMOTIONAL_VALUE})"
+
+
+# --- TUTAJ BY£ B£¥D: Klasa Comment musi byæ dosuniêta do lewej krawêdzi! ---
+class Comment(models.Model):
+    """
+    Comment added by a user to a specific EmotionPoint.
+    Stores text feedback related to an emotional rating.
+    """
+    point = models.ForeignKey(
+        EmotionPoint,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        help_text="The emotion point being commented on"
+    )
+
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        help_text="User who wrote the comment"
+    )
+
+    content = models.TextField(
+        help_text="Content of the comment"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the comment was created"
+    )
+
+    class Meta:
+        verbose_name = "Comment"
+        verbose_name_plural = "Comments"
+        db_table = "emotions_comment"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment by {self.author} on {self.point}"
