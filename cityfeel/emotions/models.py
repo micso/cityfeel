@@ -73,7 +73,6 @@ class EmotionPoint(models.Model):
         return f"{self.user.username} - {self.location.name} ({self.emotional_value}/{self.MAX_EMOTIONAL_VALUE})"
 
 
-# --- TUTAJ BY£ B£¥D: Klasa Comment musi byæ dosuniêta do lewej krawêdzi! ---
 class Comment(models.Model):
     """
     Comment added by a user to a specific EmotionPoint.
@@ -110,3 +109,40 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.author} on {self.point}"
+
+
+class Photo(models.Model):
+    """
+    Photo uploaded by a user for a specific EmotionPoint.
+    """
+    point = models.ForeignKey(
+        EmotionPoint,
+        on_delete=models.CASCADE,
+        related_name='photos',
+        help_text="The emotion point this photo belongs to"
+    )
+
+    image = models.ImageField(
+        upload_to='emotion_photos/%Y/%m/',
+        help_text="Uploaded image file"
+    )
+
+    caption = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional caption for the photo"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the photo was uploaded"
+    )
+
+    class Meta:
+        verbose_name = "Photo"
+        verbose_name_plural = "Photos"
+        db_table = "emotions_photo"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Photo for {self.point} ({self.created_at.date()})"
