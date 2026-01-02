@@ -71,3 +71,78 @@ class EmotionPoint(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.location.name} ({self.emotional_value}/{self.MAX_EMOTIONAL_VALUE})"
+
+
+class Comment(models.Model):
+    """
+    Comment added by a user to a specific EmotionPoint.
+    Stores text feedback related to an emotional rating.
+    """
+    point = models.ForeignKey(
+        EmotionPoint,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        help_text="The emotion point being commented on"
+    )
+
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        help_text="User who wrote the comment"
+    )
+
+    content = models.TextField(
+        help_text="Content of the comment"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the comment was created"
+    )
+
+    class Meta:
+        verbose_name = "Comment"
+        verbose_name_plural = "Comments"
+        db_table = "emotions_comment"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment by {self.author} on {self.point}"
+
+
+class Photo(models.Model):
+    """
+    Photo uploaded by a user for a specific EmotionPoint.
+    """
+    point = models.ForeignKey(
+        EmotionPoint,
+        on_delete=models.CASCADE,
+        related_name='photos',
+        help_text="The emotion point this photo belongs to"
+    )
+
+    image = models.ImageField(
+        upload_to='emotion_photos/%Y/%m/',
+        help_text="Uploaded image file"
+    )
+
+    caption = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional caption for the photo"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the photo was uploaded"
+    )
+
+    class Meta:
+        verbose_name = "Photo"
+        verbose_name_plural = "Photos"
+        db_table = "emotions_photo"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Photo for {self.point} ({self.created_at.date()})"

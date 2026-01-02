@@ -1,5 +1,5 @@
 from django.contrib.gis.db import models
-
+from django.db.models import Avg
 
 class Location(models.Model):
     """
@@ -29,3 +29,12 @@ class Location(models.Model):
 
     def get_coordinates_display(self):
         return f"Lat: {self.coordinates.y}, Lon: {self.coordinates.x}"
+
+    # --- Zadanie #35: Obliczanie œredniej ---
+    @property
+    def average_rating(self):
+        """Calculates average emotional value for this location."""
+        # Pobieramy powi¹zane punkty emocji i liczymy œredni¹ z pola 'emotional_value'
+        # Wykorzystujemy related_name='emotion_points' z modelu EmotionPoint
+        avg = self.emotion_points.aggregate(Avg('emotional_value'))['emotional_value__avg']
+        return round(float(avg), 2) if avg is not None else 0.0
