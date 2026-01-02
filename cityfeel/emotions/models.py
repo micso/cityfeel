@@ -14,22 +14,22 @@ class EmotionPoint(models.Model):
     MAX_EMOTIONAL_VALUE = 5
     
     PRIVACY_CHOICES = [
-        ('public', 'Public'),
-        ('private', 'Private'),
+        ('public', 'Publiczny'),
+        ('private', 'Prywatny'),
     ]
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='emotion_points',
-        help_text="User who created this emotion point"
+        help_text="Użytkownik, który utworzył ten punkt emocji"
     )
 
     location = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
         related_name='emotion_points',
-        help_text="Location associated with this emotion"
+        help_text="Lokalizacja powiązana z tą emocją"
     )
 
     emotional_value = models.PositiveSmallIntegerField(
@@ -37,29 +37,29 @@ class EmotionPoint(models.Model):
             MinValueValidator(MIN_EMOTIONAL_VALUE),
             MaxValueValidator(MAX_EMOTIONAL_VALUE)
         ],
-        help_text=f"Emotional rating from {MIN_EMOTIONAL_VALUE} (negative) to {MAX_EMOTIONAL_VALUE} (positive)"
+        help_text=f"Ocena emocjonalna od {MIN_EMOTIONAL_VALUE} (negatywna) do {MAX_EMOTIONAL_VALUE} (pozytywna)"
     )
 
     privacy_status = models.CharField(
         max_length=10,
         choices=PRIVACY_CHOICES,
         default='public',
-        help_text="Visibility of this emotion point"
+        help_text="Widoczność tego punktu emocji"
     )
 
     created_at = models.DateTimeField(
         auto_now_add=True,
-        help_text="When this emotion point was created"
+        help_text="Kiedy ten punkt emocji został utworzony"
     )
 
     updated_at = models.DateTimeField(
         auto_now=True,
-        help_text="When this emotion point was last updated"
+        help_text="Kiedy ten punkt emocji był ostatnio aktualizowany"
     )
 
     class Meta:
-        verbose_name = "Emotion Point"
-        verbose_name_plural = "Emotion Points"
+        verbose_name = "Punkt emocji"
+        verbose_name_plural = "Punkty emocji"
         db_table = "emotions_emotion_point"
         unique_together = [('user', 'location')]
         indexes = [
