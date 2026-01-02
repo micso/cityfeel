@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Mapa Emocji - CityFeel{% endblock %}
+
+{% block main_attrs %}{% endblock %}
+
+{% block content %}
+<!-- Full-screen map container -->
+<div id="map" style="height: calc(100vh - 56px); width: 100%;"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Initialize Leaflet map
+  const map = L.map('map').setView([52.2297, 21.0122], 13); // Warsaw coordinates as default
+
+  // Add OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Placeholder marker
+  const marker = L.marker([52.2297, 21.0122]).addTo(map);
+  marker.bindPopup('<b>CityFeel</b><br>Mapa emocji (placeholder)').openPopup();
+
+  // TODO: Fetch emotion points from /api/emotion-points/
+  // TODO: Display emotion markers with color coding based on emotional_value
+  // Example for future implementation:
+  // fetch('/api/emotion-points/')
+  //   .then(response => response.json())
+  //   .then(data => {
+  //     data.forEach(point => {
+  //       const color = getColorByEmotionalValue(point.emotional_value);
+  //       L.circleMarker([point.lat, point.lon], {
+  //         radius: 8,
+  //         fillColor: color,
+  //         color: '#fff',
+  //         weight: 1,
+  //         opacity: 1,
+  //         fillOpacity: 0.8
+  //       }).addTo(map)
+  //         .bindPopup(`Emotion: ${point.emotional_value}/5`);
+  //     });
+  //   });
+</script>
+{% endblock %}
