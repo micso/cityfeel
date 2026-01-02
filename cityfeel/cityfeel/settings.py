@@ -64,13 +64,15 @@ ROOT_URLCONF = 'cityfeel.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.static',
             ],
         },
     },
@@ -132,6 +134,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Media files (User uploads)
 MEDIA_URL = '/media/'
@@ -145,3 +148,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Authentication settings
+LOGIN_REDIRECT_URL = 'map:emotion_map'
+LOGOUT_REDIRECT_URL = 'cf_auth:login'
+LOGIN_URL = 'cf_auth:login'
