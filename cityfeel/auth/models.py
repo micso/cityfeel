@@ -22,13 +22,13 @@ class CFUser(AbstractUser):
         upload_to=user_avatar_upload_path,
         blank=True,
         null=True,
-        help_text="User profile picture",
+        help_text="Zdjęcie profilowe użytkownika",
         max_length=500
     )
 
     class Meta:
-        verbose_name = "User"
-        verbose_name_plural = "Users"
+        verbose_name = "Użytkownik"
+        verbose_name_plural = "Użytkownicy"
         db_table = "auth_user"
 
     def __str__(self):
