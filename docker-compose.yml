@@ -27,7 +27,7 @@ services:
       dockerfile: ./docker/web/Dockerfile
     container_name: cityfeel_web
     restart: unless-stopped
-    command: uv run cityfeel/manage.py runserver 0.0.0.0:8000
+    command: uv run python manage.py runserver 0.0.0.0:8000
     ports:
       - "8000:8000"
     env_file:

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'auth.apps.AuthConfig',
     'map.apps.MapConfig',
     'emotions.apps.EmotionsConfig',
+    'social',
 ]
 
 MIDDLEWARE = [
