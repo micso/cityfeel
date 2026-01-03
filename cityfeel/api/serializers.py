@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import EmotionPoint
+from emotions.models import EmotionPoint
 
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)  # Dodajemy czytelną nazwę usera
