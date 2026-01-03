@@ -71,3 +71,40 @@ class EmotionPoint(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.location.name} ({self.emotional_value}/{self.MAX_EMOTIONAL_VALUE})"
+
+
+# --- Nowy kod dla Zadania #31 (jako osobna klasa) ---
+
+class Comment(models.Model):
+    """
+    Komentarz użytkownika do punktu emocji.
+    Zadanie #31
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='point_comments',
+        help_text="Autor komentarza"
+    )
+    emotion_point = models.ForeignKey(
+        EmotionPoint,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        help_text="Punkt emocji, którego dotyczy komentarz"
+    )
+    content = models.TextField(
+        help_text="Treść komentarza"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Data utworzenia komentarza"
+    )
+
+    class Meta:
+        verbose_name = "Komentarz"
+        verbose_name_plural = "Komentarze"
+        db_table = "emotions_comment"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Komentarz użytkownika {self.user} do punktu {self.emotion_point_id}"
