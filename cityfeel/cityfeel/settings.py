@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
+    'rest_framework',
     'auth.apps.AuthConfig',
     'map.apps.MapConfig',
     'emotions.apps.EmotionsConfig',
@@ -153,3 +154,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = 'map:emotion_map'
 LOGOUT_REDIRECT_URL = 'cf_auth:login'
 LOGIN_URL = 'cf_auth:login'
+
+# Django REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+}
+
+# CityFeel API settings
+CITYFEEL_LOCATION_PROXIMITY_RADIUS = 50  # metry - promień dla proximity matching
