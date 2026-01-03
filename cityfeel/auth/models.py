@@ -26,6 +26,8 @@ class CFUser(AbstractUser):
         max_length=500
     )
 
+    description = models.TextField(blank=True, null=True, max_length=500)
+
     class Meta:
         verbose_name = "Użytkownik"
         verbose_name_plural = "Użytkownicy"
