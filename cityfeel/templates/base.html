@@ -45,7 +45,7 @@
               <a class="nav-link text-muted" href="#" onclick="return false;" title="Wkrótce dostępne">Dodaj opinię</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link text-muted" href="#" onclick="return false;" title="Wkrótce dostępne">Moje konto</a>
+              <a class="nav-link" href="{% url 'cf_auth:profile' user_id=user.id %}">Moje konto</a>
             </li>
             <li class="nav-item">
               <span class="nav-link">{{ user.username }}</span>
