@@ -1,0 +1,42 @@
+name: Cityfeel CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup environment file
+      run: |
+        cp .env.example .env
+        sed -i 's/DB_HOST=localhost/DB_HOST=postgres/' .env
+
+    - name: Build Docker images
+      run: docker compose build
+
+    - name: Start PostgreSQL database
+      run: docker compose up -d postgres
+
+    - name: Wait for PostgreSQL to be ready
+      run: |
+        timeout 60 bash -c 'until docker compose exec -T postgres pg_isready -U cityfeel -d cityfeel_db; do sleep 2; done'
+
+    - name: Run migrations
+      run: docker compose run --rm web uv run cityfeel/manage.py migrate --noinput
+
+    - name: Run Django system check
+      run: docker compose run --rm web uv run cityfeel/manage.py check
+
+    - name: Run Django tests
+      run: docker compose run --rm web uv run cityfeel/manage.py test
+
+    - name: Stop containers
+      if: always()
+      run: docker compose down -v
