@@ -22,10 +22,9 @@ from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('auth/', include('auth.urls')),
+    path('accounts/', include('auth.urls')),
     path('map/', include('map.urls')),
     path('api/', include('api.urls')),
-    # Homepage redirects to emotion map
     path('', RedirectView.as_view(pattern_name='map:emotion_map'), name='home'),
 ]
 
