@@ -31,13 +31,29 @@ class EmotionPointAPITestCase(TestCase):
         # URL endpointu
         self.url = '/api/emotion-points/'
 
+    def make_location_data(self, lat, lon, name=None):
+        """Helper do tworzenia location data."""
+        data = {
+            'coordinates': {
+                'latitude': lat,
+                'longitude': lon,
+            }
+        }
+        if name is not None:
+            data['name'] = name
+        return data
+
     def test_create_emotion_point_success(self):
         """Test tworzenia nowego EmotionPoint."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': {
+                'coordinates': {
+                    'latitude': self.test_lat,
+                    'longitude': self.test_lon,
+                },
+            },
             'emotional_value': 4,
             'privacy_status': 'public'
         }
@@ -50,10 +66,8 @@ class EmotionPointAPITestCase(TestCase):
         # Sprawdź dane odpowiedzi
         self.assertEqual(response.data['emotional_value'], 4)
         self.assertEqual(response.data['privacy_status'], 'public')
-        self.assertEqual(response.data['latitude'], self.test_lat)
-        self.assertEqual(response.data['longitude'], self.test_lon)
-        self.assertTrue(response.data['created'])
-        self.assertFalse(response.data['updated'])
+        self.assertEqual(response.data['location']['coordinates']['latitude'], self.test_lat)
+        self.assertEqual(response.data['location']['coordinates']['longitude'], self.test_lon)
 
         # Sprawdź czy utworzono w bazie
         self.assertEqual(EmotionPoint.objects.count(), 1)
@@ -81,20 +95,15 @@ class EmotionPointAPITestCase(TestCase):
 
         # Wyślij request z tymi samymi współrzędnymi
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 5,
             'privacy_status': 'private'
         }
 
         response = self.client.post(self.url, data, format='json')
 
-        # Sprawdź status code (200 OK dla update)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Sprawdź flagi
-        self.assertFalse(response.data['created'])
-        self.assertTrue(response.data['updated'])
+        # Sprawdź status code (POST zawsze zwraca 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Sprawdź zaktualizowane wartości
         self.assertEqual(response.data['emotional_value'], 5)
@@ -125,8 +134,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Wyślij request z oryginalnym punktem
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
         }
 
@@ -157,8 +165,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Wyślij request z oryginalnym punktem
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
         }
 
@@ -174,8 +181,7 @@ class EmotionPointAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
             # Brak privacy_status
         }
@@ -189,8 +195,7 @@ class EmotionPointAPITestCase(TestCase):
         """Test czy nieautoryzowany request zwraca 401/403."""
         # NIE autentykuj użytkownika
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
         }
 
@@ -204,8 +209,7 @@ class EmotionPointAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 0,  # Nieprawidłowe
         }
 
@@ -219,8 +223,7 @@ class EmotionPointAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 6,  # Nieprawidłowe
         }
 
@@ -234,68 +237,63 @@ class EmotionPointAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': -91.0,  # Nieprawidłowe
-            'longitude': self.test_lon,
+            'location': self.make_location_data(-91.0, self.test_lon),  # Nieprawidłowe
             'emotional_value': 4,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('latitude', response.data)
+        self.assertIn('location', response.data)
 
     def test_invalid_latitude_too_high(self):
         """Test walidacji: latitude > 90."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': 91.0,  # Nieprawidłowe
-            'longitude': self.test_lon,
+            'location': self.make_location_data(91.0, self.test_lon),  # Nieprawidłowe
             'emotional_value': 4,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('latitude', response.data)
+        self.assertIn('location', response.data)
 
     def test_invalid_longitude_too_low(self):
         """Test walidacji: longitude < -180."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': -181.0,  # Nieprawidłowe
+            'location': self.make_location_data(self.test_lat, -181.0),  # Nieprawidłowe
             'emotional_value': 4,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('longitude', response.data)
+        self.assertIn('location', response.data)
 
     def test_invalid_longitude_too_high(self):
         """Test walidacji: longitude > 180."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': 181.0,  # Nieprawidłowe
+            'location': self.make_location_data(self.test_lat, 181.0),  # Nieprawidłowe
             'emotional_value': 4,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('longitude', response.data)
+        self.assertIn('location', response.data)
 
     def test_invalid_privacy_status(self):
         """Test walidacji: nieprawidłowy privacy_status."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
             'privacy_status': 'invalid_status',  # Nieprawidłowe
         }
@@ -310,38 +308,45 @@ class EmotionPointAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
         data = {
-            # Brak latitude
-            'longitude': self.test_lon,
+            'location': {
+                'coordinates': {
+                    # Brak latitude
+                    'longitude': self.test_lon,
+                }
+            },
             'emotional_value': 4,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('latitude', response.data)
+        self.assertIn('location', response.data)
 
     def test_missing_required_field_longitude(self):
         """Test walidacji: brak wymaganego pola longitude."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            # Brak longitude
+            'location': {
+                'coordinates': {
+                    'latitude': self.test_lat,
+                    # Brak longitude
+                }
+            },
             'emotional_value': 4,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('longitude', response.data)
+        self.assertIn('location', response.data)
 
     def test_missing_required_field_emotional_value(self):
         """Test walidacji: brak wymaganego pola emotional_value."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             # Brak emotional_value
         }
 
@@ -356,8 +361,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Test -90 (South Pole)
         data = {
-            'latitude': -90.0,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(-90.0, self.test_lon),
             'emotional_value': 4,
         }
         response = self.client.post(self.url, data, format='json')
@@ -365,8 +369,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Test 90 (North Pole)
         data = {
-            'latitude': 90.0,
-            'longitude': 0.0,  # Zmieniona longitude żeby był nowy punkt
+            'location': self.make_location_data(90.0, 0.0),  # Zmieniona longitude żeby był nowy punkt
             'emotional_value': 4,
         }
         response = self.client.post(self.url, data, format='json')
@@ -378,8 +381,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Test -180
         data = {
-            'latitude': 0.0,
-            'longitude': -180.0,
+            'location': self.make_location_data(0.0, -180.0),
             'emotional_value': 4,
         }
         response = self.client.post(self.url, data, format='json')
@@ -387,8 +389,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Test 180
         data = {
-            'latitude': 10.0,  # Zmieniona latitude żeby był nowy punkt
-            'longitude': 180.0,
+            'location': self.make_location_data(10.0, 180.0),  # Zmieniona latitude żeby był nowy punkt
             'emotional_value': 4,
         }
         response = self.client.post(self.url, data, format='json')
@@ -400,8 +401,7 @@ class EmotionPointAPITestCase(TestCase):
 
         # Pierwszy użytkownik dodaje punkt
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
         }
         response1 = self.client.post(self.url, data, format='json')
@@ -429,8 +429,7 @@ class EmotionPointAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 4,
             'privacy_status': 'public',
         }
@@ -439,31 +438,34 @@ class EmotionPointAPITestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Sprawdź obecność wszystkich pól
+        # Sprawdź obecność wszystkich pól top-level
         required_fields = [
             'id',
-            'latitude',
-            'longitude',
+            'location',
             'emotional_value',
             'privacy_status',
-            'location_id',
-            'location_name',
-            'created_at',
-            'updated_at',
-            'created',
-            'updated',
+            'username',
         ]
 
         for field in required_fields:
             self.assertIn(field, response.data, f"Brak pola '{field}' w odpowiedzi")
+
+        # Sprawdź obecność pól w nested location
+        location_fields = ['id', 'name', 'coordinates']
+        for field in location_fields:
+            self.assertIn(field, response.data['location'], f"Brak pola '{field}' w location")
+
+        # Sprawdź obecność pól w nested coordinates
+        coordinates_fields = ['latitude', 'longitude']
+        for field in coordinates_fields:
+            self.assertIn(field, response.data['location']['coordinates'], f"Brak pola '{field}' w coordinates")
 
     def test_location_name_is_auto_generated(self):
         """Test czy nazwa Location jest automatycznie generowana w formacie 'Lat: XX.XXXX, Lon: YY.YYYY'."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': 52.2297,
-            'longitude': 21.0122,
+            'location': self.make_location_data(52.2297, 21.0122),
             'emotional_value': 4,
         }
 
@@ -473,10 +475,10 @@ class EmotionPointAPITestCase(TestCase):
 
         # Sprawdź format nazwy lokalizacji
         expected_name = "Lat: 52.2297, Lon: 21.0122"
-        self.assertEqual(response.data['location_name'], expected_name)
+        self.assertEqual(response.data['location']['name'], expected_name)
 
         # Sprawdź że Location w bazie ma tę samą nazwę
-        location = Location.objects.get(id=response.data['location_id'])
+        location = Location.objects.get(id=response.data['location']['id'])
         self.assertEqual(location.name, expected_name)
 
     def test_custom_location_name(self):
@@ -485,10 +487,8 @@ class EmotionPointAPITestCase(TestCase):
 
         custom_name = "Plac Zamkowy"
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon, custom_name),
             'emotional_value': 4,
-            'location_name': custom_name,
         }
 
         response = self.client.post(self.url, data, format='json')
@@ -496,10 +496,10 @@ class EmotionPointAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Sprawdź czy użyto podanej nazwy
-        self.assertEqual(response.data['location_name'], custom_name)
+        self.assertEqual(response.data['location']['name'], custom_name)
 
         # Sprawdź że Location w bazie ma tę nazwę
-        location = Location.objects.get(id=response.data['location_id'])
+        location = Location.objects.get(id=response.data['location']['id'])
         self.assertEqual(location.name, custom_name)
 
     def test_custom_location_name_overrides_auto_generation(self):
@@ -508,10 +508,8 @@ class EmotionPointAPITestCase(TestCase):
 
         custom_name = "Moja ulubiona kawiarnia"
         data = {
-            'latitude': 50.0614,
-            'longitude': 19.9366,
+            'location': self.make_location_data(50.0614, 19.9366, custom_name),
             'emotional_value': 5,
-            'location_name': custom_name,
         }
 
         response = self.client.post(self.url, data, format='json')
@@ -519,9 +517,9 @@ class EmotionPointAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Sprawdź że nie została użyta auto-generowana nazwa
-        self.assertNotEqual(response.data['location_name'], "Lat: 50.0614, Lon: 19.9366")
+        self.assertNotEqual(response.data['location']['name'], "Lat: 50.0614, Lon: 19.9366")
         # Sprawdź że użyto nazwy podanej przez użytkownika
-        self.assertEqual(response.data['location_name'], custom_name)
+        self.assertEqual(response.data['location']['name'], custom_name)
 
     def test_location_name_max_length_validation(self):
         """Test walidacji: location_name dłuższa niż 200 znaków."""
@@ -530,32 +528,28 @@ class EmotionPointAPITestCase(TestCase):
         # Nazwa 201 znaków (za długa)
         long_name = "A" * 201
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon, long_name),
             'emotional_value': 4,
-            'location_name': long_name,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('location_name', response.data)
+        self.assertIn('location', response.data)
 
     def test_location_name_empty_string_validation(self):
         """Test walidacji: location_name jako pusty string."""
         self.client.force_authenticate(user=self.user)
 
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon, ''),  # Pusty string
             'emotional_value': 4,
-            'location_name': '',  # Pusty string
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('location_name', response.data)
+        self.assertIn('location', response.data)
 
     def test_location_name_with_special_characters(self):
         """Test czy nazwa lokalizacji może zawierać znaki specjalne i polskie znaki."""
@@ -563,17 +557,15 @@ class EmotionPointAPITestCase(TestCase):
 
         custom_name = "Kawiarnia \"Pod Aniołem\" - ul. Świętokrzyska 10/12"
         data = {
-            'latitude': self.test_lat,
-            'longitude': self.test_lon,
+            'location': self.make_location_data(self.test_lat, self.test_lon, custom_name),
             'emotional_value': 4,
-            'location_name': custom_name,
         }
 
         response = self.client.post(self.url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['location_name'], custom_name)
+        self.assertEqual(response.data['location']['name'], custom_name)
 
         # Sprawdź w bazie
-        location = Location.objects.get(id=response.data['location_id'])
+        location = Location.objects.get(id=response.data['location']['id'])
         self.assertEqual(location.name, custom_name)
