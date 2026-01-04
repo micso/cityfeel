@@ -13,7 +13,7 @@
 {% block extra_js %}
 <script>
   // Initialize Leaflet map
-  const map = L.map('map').setView([52.2297, 21.0122], 13); // Warsaw coordinates as default
+  const map = L.map('map').setView([54.3755425,18.6088834], 12); //PG coordinates as default
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -22,8 +22,8 @@
   }).addTo(map);
 
   // Placeholder marker
-  const marker = L.marker([52.2297, 21.0122]).addTo(map);
-  marker.bindPopup('<b>CityFeel</b><br>Mapa emocji (placeholder)').openPopup();
+  //const marker = L.marker([52.2297, 21.0122]).addTo(map);
+ // marker.bindPopup('<b>CityFeel</b><br>Mapa emocji (placeholder)').openPopup();
 
   // TODO: Fetch emotion points from /api/emotion-points/
   // TODO: Display emotion markers with color coding based on emotional_value
