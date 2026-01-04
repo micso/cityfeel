@@ -18,9 +18,26 @@ uv run cityfeel/manage.py check
 uv run cityfeel/manage.py migrate
 uv run cityfeel/manage.py runserver
 uv run cityfeel/manage.py makemigrations
-uv run cityfeel/manage.py test
 uv run cityfeel/manage.py shell
 ```
+
+#### Uruchamianie testów
+**WAŻNE:** Testy muszą być uruchamiane z podaniem nazwy głównego modułu `cityfeel`:
+
+```bash
+# Z głównego katalogu projektu (zalecane dla CI/CD i skryptów)
+uv run cityfeel/manage.py test cityfeel
+
+# Alternatywnie: z katalogu cityfeel/ (bez podawania modułu)
+cd cityfeel
+uv run manage.py test
+
+# Uruchomienie testów konkretnej aplikacji
+uv run cityfeel/manage.py test cityfeel.api
+uv run cityfeel/manage.py test cityfeel.auth
+```
+
+**Dlaczego:** Django szuka testów względem working directory. Uruchamianie `uv run cityfeel/manage.py test` (bez `cityfeel` na końcu) z głównego katalogu projektu nie znajdzie żadnych testów.
 
 #### Instalacja zależności
 ```bash
