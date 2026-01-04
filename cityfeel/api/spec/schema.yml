@@ -1,0 +1,412 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /api/emotion-points/:
+    get:
+      operationId: emotion_points_list
+      parameters:
+      - in: query
+        name: emotional_value
+        schema:
+          type: integer
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - emotion-points
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEmotionPointList'
+          description: ''
+    post:
+      operationId: emotion_points_create
+      tags:
+      - emotion-points
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmotionPoint'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmotionPoint'
+          description: ''
+  /api/emotion-points/{id}/:
+    get:
+      operationId: emotion_points_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Punkt emocji.
+        required: true
+      tags:
+      - emotion-points
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmotionPoint'
+          description: ''
+    put:
+      operationId: emotion_points_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Punkt emocji.
+        required: true
+      tags:
+      - emotion-points
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmotionPoint'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmotionPoint'
+          description: ''
+    patch:
+      operationId: emotion_points_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Punkt emocji.
+        required: true
+      tags:
+      - emotion-points
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEmotionPoint'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmotionPoint'
+          description: ''
+    delete:
+      operationId: emotion_points_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Punkt emocji.
+        required: true
+      tags:
+      - emotion-points
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - ht
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+components:
+  schemas:
+    EmotionPoint:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        location:
+          $ref: '#/components/schemas/Location'
+        emotional_value:
+          type: integer
+          maximum: 5
+          minimum: 1
+          description: Ocena emocjonalna od 1 (negatywna) do 5 (pozytywna)
+        privacy_status:
+          allOf:
+          - $ref: '#/components/schemas/PrivacyStatusEnum'
+          description: |-
+            Widoczność tego punktu emocji
+
+            * `public` - Publiczny
+            * `private` - Prywatny
+        username:
+          type: string
+          readOnly: true
+      required:
+      - emotional_value
+      - id
+      - location
+      - username
+    Location:
+      type: object
+      description: |-
+        Serializer dla modelu Location z obsługą PostGIS Point.
+        Używa custom PointField do konwersji współrzędnych.
+        Może być używany samodzielnie w przyszłych endpointach.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Nazwa lokalizacji
+          maxLength: 200
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: float
+              minimum: -90.0
+              maximum: 90.0
+              description: Szerokość geograficzna
+            longitude:
+              type: number
+              format: float
+              minimum: -180.0
+              maximum: 180.0
+              description: Długość geograficzna
+          required:
+          - latitude
+          - longitude
+          example:
+            latitude: 54.352
+            longitude: 18.6466
+      required:
+      - coordinates
+      - id
+    PaginatedEmotionPointList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmotionPoint'
+    PatchedEmotionPoint:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        location:
+          $ref: '#/components/schemas/Location'
+        emotional_value:
+          type: integer
+          maximum: 5
+          minimum: 1
+          description: Ocena emocjonalna od 1 (negatywna) do 5 (pozytywna)
+        privacy_status:
+          allOf:
+          - $ref: '#/components/schemas/PrivacyStatusEnum'
+          description: |-
+            Widoczność tego punktu emocji
+
+            * `public` - Publiczny
+            * `private` - Prywatny
+        username:
+          type: string
+          readOnly: true
+    PrivacyStatusEnum:
+      enum:
+      - public
+      - private
+      type: string
+      description: |-
+        * `public` - Publiczny
+        * `private` - Prywatny
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

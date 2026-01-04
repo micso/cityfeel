@@ -12,4 +12,5 @@ dependencies = [
     "pillow>=11.0.0",
     "djangorestframework>=3.16.1",
     "django-filter>=25.2",
+    "drf-spectacular>=0.29.0",
 ]

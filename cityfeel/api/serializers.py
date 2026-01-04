@@ -1,13 +1,37 @@
 from rest_framework import serializers
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.measure import D
 from django.conf import settings
+from drf_spectacular.utils import extend_schema_field
 
 from emotions.models import EmotionPoint
 from map.models import Location
 
 
+@extend_schema_field({
+    'type': 'object',
+    'properties': {
+        'latitude': {
+            'type': 'number',
+            'format': 'float',
+            'minimum': -90.0,
+            'maximum': 90.0,
+            'description': 'Szerokość geograficzna'
+        },
+        'longitude': {
+            'type': 'number',
+            'format': 'float',
+            'minimum': -180.0,
+            'maximum': 180.0,
+            'description': 'Długość geograficzna'
+        }
+    },
+    'required': ['latitude', 'longitude'],
+    'example': {
+        'latitude': 54.3520,
+        'longitude': 18.6466
+    }
+})
 class PointField(serializers.Field):
     """
     Custom serializer field dla django.contrib.gis.db.models.fields.PointField.
