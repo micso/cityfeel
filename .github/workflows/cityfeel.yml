@@ -35,7 +35,7 @@ jobs:
       run: docker compose run --rm web uv run cityfeel/manage.py check
 
     - name: Run Django tests
-      run: docker compose run --rm web uv run cityfeel/manage.py test
+      run: docker compose run --rm web uv run cityfeel/manage.py test cityfeel
 
     - name: Stop containers
       if: always()
