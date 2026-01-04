@@ -8,91 +8,97 @@ from emotions.models import EmotionPoint
 from map.models import Location
 
 
+class PointField(serializers.Field):
+    """
+    Custom serializer field dla django.contrib.gis.db.models.fields.PointField.
+
+    Konwertuje PostGIS Point na format {latitude, longitude} i odwrotnie.
+    """
+    def to_representation(self, value):
+        """Konwertuje PostGIS Point na dict {latitude, longitude}."""
+        if value is None:
+            return None
+
+        return {
+            'latitude': value.y,
+            'longitude': value.x,
+        }
+
+    def to_internal_value(self, data):
+        """Konwertuje dict {latitude, longitude} na PostGIS Point."""
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Współrzędne muszą być w formacie obiektu.")
+
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+
+        # Walidacja latitude
+        if latitude is None:
+            raise serializers.ValidationError({'latitude': 'Pole latitude jest wymagane.'})
+
+        try:
+            latitude = float(latitude)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({'latitude': 'Nieprawidłowy format szerokości geograficznej.'})
+
+        if latitude < -90.0 or latitude > 90.0:
+            raise serializers.ValidationError({'latitude': 'Szerokość geograficzna musi być w zakresie -90 do 90.'})
+
+        # Walidacja longitude
+        if longitude is None:
+            raise serializers.ValidationError({'longitude': 'Pole longitude jest wymagane.'})
+
+        try:
+            longitude = float(longitude)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({'longitude': 'Nieprawidłowy format długości geograficznej.'})
+
+        if longitude < -180.0 or longitude > 180.0:
+            raise serializers.ValidationError({'longitude': 'Długość geograficzna musi być w zakresie -180 do 180.'})
+
+        # Utwórz PostGIS Point (longitude FIRST, latitude SECOND - standard WGS84)
+        return Point(longitude, latitude, srid=4326)
+
+
+class LocationSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Location z obsługą PostGIS Point.
+    Używa custom PointField do konwersji współrzędnych.
+    Może być używany samodzielnie w przyszłych endpointach.
+    """
+    coordinates = PointField()
+
+    class Meta:
+        model = Location
+        fields = ['id', 'name', 'coordinates']
+        read_only_fields = ['id']
+        extra_kwargs = {
+            'name': {
+                'required': False,  # Opcjonalne, będzie auto-generowane
+                'allow_blank': False,
+                'max_length': 200,
+                'error_messages': {
+                    'max_length': 'Nazwa lokalizacji nie może być dłuższa niż 200 znaków.',
+                    'blank': 'Nazwa lokalizacji nie może być pusta.',
+                }
+            }
+        }
+
+
 class EmotionPointSerializer(serializers.ModelSerializer):
-    """
-    Serializer dla EmotionPoint z obsługą proximity matching dla Location.
-
-    Request format:
-    {
-        "latitude": 52.2297,
-        "longitude": 21.0122,
-        "emotional_value": 4,
-        "privacy_status": "public",  # opcjonalne
-        "location_name": "Plac Zamkowy"  # opcjonalne - jeśli nie podane, wygeneruje się automatycznie
-    }
-
-    Response format:
-    {
-        "id": 1,
-        "latitude": 52.2297,
-        "longitude": 21.0122,
-        "emotional_value": 4,
-        "privacy_status": "public",
-        "location_id": 5,
-        "location_name": "Plac Zamkowy",  # nazwa podana przez użytkownika lub auto-generowana
-        "created_at": "2025-01-03T10:30:00Z",
-        "updated_at": "2025-01-03T10:30:00Z",
-        "created": true,  # lub "updated": true
-    }
-    """
-
-    # Pola wejściowe (write-only)
-    latitude = serializers.FloatField(
-        write_only=True,
-        min_value=-90.0,
-        max_value=90.0,
-        error_messages={
-            'min_value': 'Szerokość geograficzna musi być w zakresie -90 do 90.',
-            'max_value': 'Szerokość geograficzna musi być w zakresie -90 do 90.',
-            'required': 'Pole latitude jest wymagane.',
-            'invalid': 'Nieprawidłowy format szerokości geograficznej.',
-        }
-    )
-
-    longitude = serializers.FloatField(
-        write_only=True,
-        min_value=-180.0,
-        max_value=180.0,
-        error_messages={
-            'min_value': 'Długość geograficzna musi być w zakresie -180 do 180.',
-            'max_value': 'Długość geograficzna musi być w zakresie -180 do 180.',
-            'required': 'Pole longitude jest wymagane.',
-            'invalid': 'Nieprawidłowy format długości geograficznej.',
-        }
-    )
-
-    location_name = serializers.CharField(
-        max_length=200,
-        required=False,
-        allow_blank=False,
-        help_text="Opcjonalna nazwa lokalizacji. Jeśli nie podana, zostanie wygenerowana automatycznie.",
-        error_messages={
-            'max_length': 'Nazwa lokalizacji nie może być dłuższa niż 200 znaków.',
-            'blank': 'Nazwa lokalizacji nie może być pusta.',
-        }
-    )
-
-    # Pola wyjściowe (read-only)
-    location_id = serializers.IntegerField(source='location.id', read_only=True)
-    created = serializers.SerializerMethodField()
-    updated = serializers.SerializerMethodField()
+    username = serializers.CharField(source='user.username', read_only=True)
+    location = LocationSerializer()
 
     class Meta:
         model = EmotionPoint
         fields = [
             'id',
-            'latitude',
-            'longitude',
+            'location',
             'emotional_value',
             'privacy_status',
-            'location_id',
-            'location_name',
-            'created_at',
-            'updated_at',
-            'created',
-            'updated',
+            'username',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'location_id']
+        read_only_fields = ['id']
         extra_kwargs = {
             'emotional_value': {
                 'error_messages': {
@@ -109,48 +115,23 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             }
         }
 
-    def get_created(self, obj):
-        """Flaga wskazująca czy punkt został utworzony (nie aktualizowany)."""
-        return getattr(obj, '_was_created', False)
-
-    def get_updated(self, obj):
-        """Flaga wskazująca czy punkt został zaktualizowany (nie utworzony)."""
-        return not getattr(obj, '_was_created', False)
-
-    def validate(self, attrs):
-        """
-        Walidacja na poziomie obiektu.
-        Weryfikacja poprawności kombinacji pól.
-        """
-        latitude = attrs.get('latitude')
-        longitude = attrs.get('longitude')
-
-        # Dodatkowa walidacja współrzędnych (edge cases)
-        if latitude is not None and longitude is not None:
-            # Sprawdź czy punkt nie jest w środku oceanu (opcjonalna walidacja)
-            # Można dodać walidację czy punkt znajduje się w dopuszczalnym obszarze
-            pass
-
-        return attrs
-
     def create(self, validated_data):
         """
         Tworzy lub aktualizuje EmotionPoint z proximity matching dla Location.
 
         Logika:
-        1. Wyciągnij latitude i longitude z validated_data
-        2. Znajdź lub utwórz Location używając proximity matching
-        3. Sprawdź czy użytkownik ma już EmotionPoint dla tej Location
-        4. Jeśli tak - zaktualizuj, jeśli nie - utwórz nowy
+        1. Wyciągnij nested location data z validated_data
+        2. Wyciągnij coordinates (PostGIS Point) i name z location data
+        3. Użyj proximity matching aby znaleźć lub utworzyć Location
+        4. Sprawdź czy użytkownik ma już EmotionPoint dla tej Location
+        5. Jeśli tak - zaktualizuj, jeśli nie - utwórz nowy
         """
-        # Wyciągnij współrzędne i opcjonalną nazwę lokalizacji
-        latitude = validated_data.pop('latitude')
-        longitude = validated_data.pop('longitude')
-        custom_location_name = validated_data.pop('location_name', None)
-        user = self.context['request'].user
+        # Wyciągnij nested location data
+        location_data = validated_data.pop('location')
+        point = location_data['coordinates']  # PostGIS Point z PointField
+        custom_location_name = location_data.get('name', None)
 
-        # Utwórz punkt PostGIS (longitude FIRST, latitude SECOND - to standard WGS84)
-        point = Point(longitude, latitude, srid=4326)
+        user = self.context['request'].user
 
         # Pobierz promień z settings
         proximity_radius_meters = getattr(
@@ -171,9 +152,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             .annotate(distance=Distance('coordinates', point))
             .order_by('distance')
             .first()
-
-
-
         )
 
         if nearby_location:
@@ -186,7 +164,7 @@ class EmotionPointSerializer(serializers.ModelSerializer):
                 location_name = custom_location_name
             else:
                 # Nazwa lokalizacji: "Lat: XX.XXXX, Lon: YY.YYYY"
-                location_name = f"Lat: {latitude:.4f}, Lon: {longitude:.4f}"
+                location_name = f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
 
             location = Location.objects.create(
                 name=location_name,
@@ -208,9 +186,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             )
             emotion_point.save()
 
-            # Oznacz jako zaktualizowany
-            emotion_point._was_created = False
-
         except EmotionPoint.DoesNotExist:
             # Utwórz nowy punkt
             emotion_point = EmotionPoint.objects.create(
@@ -219,22 +194,4 @@ class EmotionPointSerializer(serializers.ModelSerializer):
                 **validated_data
             )
 
-            # Oznacz jako utworzony
-            emotion_point._was_created = True
-
         return emotion_point
-
-    def to_representation(self, instance):
-        """
-        Dodaj latitude, longitude i location_name do response.
-        """
-        representation = super().to_representation(instance)
-
-        # Dodaj współrzędne i nazwę z Location
-        if instance.location:
-            if instance.location.coordinates:
-                representation['latitude'] = instance.location.coordinates.y
-                representation['longitude'] = instance.location.coordinates.x
-            representation['location_name'] = instance.location.name
-
-        return representation
