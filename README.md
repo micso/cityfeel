@@ -146,7 +146,28 @@ Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
 
 Panel administracyjny: `http://127.0.0.1:8000/admin/`
 
+## Dokumentacja API
+
+Dokumentacja REST API jest dostępna pod adresem: `http://127.0.0.1:8000/api/schema/redoc/`
+
+Dostępne formaty dokumentacji:
+- **Redoc**: `http://127.0.0.1:8000/api/schema/redoc/`
+- **Swagger UI**: `http://127.0.0.1:8000/api/schema/swagger-ui/`
+- **Surowy schemat OpenAPI**: `http://127.0.0.1:8000/api/schema/`
+
 ## Przydatne komendy
+
+### Makefile - skróty komend
+
+Projekt zawiera Makefile z najczęściej używanymi komendami:
+
+```bash
+# Uruchom wszystkie testy
+make test
+
+# Wygeneruj schemat OpenAPI do pliku cityfeel/api/spec/schema.yml
+make generate_spec
+```
 
 ### Docker - zarządzanie aplikacją
 

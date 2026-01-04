@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'rest_framework',
     'django_filters',
+    'drf_spectacular',
     'auth.apps.AuthConfig',
     'map.apps.MapConfig',
     'emotions.apps.EmotionsConfig',
@@ -174,6 +175,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # CityFeel API settings
