@@ -1,0 +1,14 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\.github",
+    "\\.github\\workflows",
+    "\\cityfeel",
+    "\\cityfeel\\api",
+    "\\cityfeel\\api\\migrations",
+    "\\cityfeel\\emotions",
+    "\\cityfeel\\map"
+  ],
+  "SelectedNode": "\\cityfeel\\api\\serializers.py",
+  "PreviewInSolutionExplorer": false
+}
