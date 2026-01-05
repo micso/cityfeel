@@ -135,6 +135,88 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/locations/:
+    get:
+      operationId: locations_list
+      description: |-
+        ViewSet dla endpointu /api/locations/ (READ-ONLY).
+
+        Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
+        Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
+
+        Filtrowanie:
+        - ?name=Gdańsk - filtrowanie po nazwie (icontains)
+        - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
+        - ?bbox=18.5,54.3,18.7,54.4 - filtrowanie po bounding box
+      parameters:
+      - in: query
+        name: bbox
+        schema:
+          type: string
+      - in: query
+        name: lat
+        schema:
+          type: number
+      - in: query
+        name: lon
+        schema:
+          type: number
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: radius
+        schema:
+          type: number
+      tags:
+      - locations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLocationListList'
+          description: ''
+  /api/locations/{id}/:
+    get:
+      operationId: locations_retrieve
+      description: |-
+        ViewSet dla endpointu /api/locations/ (READ-ONLY).
+
+        Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
+        Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
+
+        Filtrowanie:
+        - ?name=Gdańsk - filtrowanie po nazwie (icontains)
+        - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
+        - ?bbox=18.5,54.3,18.7,54.4 - filtrowanie po bounding box
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Lokalizacja.
+        required: true
+      tags:
+      - locations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationList'
+          description: ''
   /api/schema/:
     get:
       operationId: schema_retrieve
@@ -350,6 +432,61 @@ components:
       required:
       - coordinates
       - id
+    LocationList:
+      type: object
+      description: |-
+        Serializer dla endpointu GET /api/locations/ z dodatkowym polem avg_emotional_value.
+        Używany do wyświetlania listy lokalizacji z agregowanymi danymi emocji.
+
+        avg_emotional_value liczy średnią ze WSZYSTKICH emotion-points (publicznych i prywatnych).
+        Privacy status kontroluje tylko widoczność kto jak ocenił, nie wpływa na średnią.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          description: Nazwa lokalizacji
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: float
+              minimum: -90.0
+              maximum: 90.0
+              description: Szerokość geograficzna
+            longitude:
+              type: number
+              format: float
+              minimum: -180.0
+              maximum: 180.0
+              description: Długość geograficzna
+          required:
+          - latitude
+          - longitude
+          example:
+            latitude: 54.352
+            longitude: 18.6466
+        avg_emotional_value:
+          type: number
+          format: float
+          nullable: true
+          description: Średnia wartość emocjonalna (1-5) dla tej lokalizacji. Liczy
+            ze wszystkich emotion-points (publicznych i prywatnych). Null jeśli lokalizacja
+            nie ma żadnych emotion-points.
+          example: 4.2
+          readOnly: true
+        emotion_points_count:
+          type: integer
+          readOnly: true
+      required:
+      - avg_emotional_value
+      - coordinates
+      - emotion_points_count
+      - id
+      - name
     PaginatedEmotionPointList:
       type: object
       required:
@@ -373,6 +510,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EmotionPoint'
+    PaginatedLocationListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationList'
     PatchedEmotionPoint:
       type: object
       properties:

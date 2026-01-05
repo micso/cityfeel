@@ -109,6 +109,41 @@ class LocationSerializer(serializers.ModelSerializer):
         }
 
 
+class LocationListSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla endpointu GET /api/locations/ z dodatkowym polem avg_emotional_value.
+    Używany do wyświetlania listy lokalizacji z agregowanymi danymi emocji.
+
+    avg_emotional_value liczy średnią ze WSZYSTKICH emotion-points (publicznych i prywatnych).
+    Privacy status kontroluje tylko widoczność kto jak ocenił, nie wpływa na średnią.
+    """
+    coordinates = PointField()
+    avg_emotional_value = serializers.SerializerMethodField()
+    emotion_points_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Location
+        fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
+        read_only_fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
+
+    @extend_schema_field({
+        'type': 'number',
+        'format': 'float',
+        'nullable': True,
+        'description': 'Średnia wartość emocjonalna (1-5) dla tej lokalizacji. '
+                      'Liczy ze wszystkich emotion-points (publicznych i prywatnych). '
+                      'Null jeśli lokalizacja nie ma żadnych emotion-points.',
+        'example': 4.2
+    })
+    def get_avg_emotional_value(self, obj):
+        """
+        Zwraca średnią wartość emocjonalną dla tej lokalizacji.
+        Używa annotacji z queryset jeśli dostępna, inaczej None.
+        """
+        # Wartość będzie dostępna przez annotate() w viewset queryset
+        return getattr(obj, 'avg_emotional_value', None)
+
+
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     location = LocationSerializer()
