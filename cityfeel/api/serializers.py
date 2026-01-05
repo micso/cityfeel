@@ -95,7 +95,7 @@ class LocationSerializer(serializers.ModelSerializer):
 class LocationListSerializer(serializers.ModelSerializer):
     """
     Serializer dla endpointu GET /api/locations/.
-    Zwraca avg_emotional_value (ze wszystkich punktow).
+    Zwraca avg_emotional_value i emotion_points_count.
     """
     coordinates = PointField()
     avg_emotional_value = serializers.FloatField(read_only=True)

@@ -20,8 +20,10 @@ class EmotionPointViewSet(ModelViewSet):
 class LocationViewSet(ReadOnlyModelViewSet):
     """
     ViewSet dla endpointu /api/locations/ (READ-ONLY).
-    Zwraca avg_emotional_value (srednia ze WSZYSTKICH punktow, publicznych i prywatnych).
-    Jest to zgodne z dostarczonymi testami.
+
+    Zwraca lokalizacje z agregowana srednia wartoscia emocjonalna (avg_emotional_value).
+    Srednia liczy ze WSZYSTKICH emotion_points (zarowno publicznych jak i prywatnych).
+    Jest to zgodne z wymaganiami testow.
     """
     serializer_class = LocationListSerializer
     permission_classes = [IsAuthenticated]
@@ -29,6 +31,9 @@ class LocationViewSet(ReadOnlyModelViewSet):
     filterset_class = LocationFilter
 
     def get_queryset(self):
+        """
+        Zwraca queryset z annotacja avg_emotional_value i emotion_points_count.
+        """
         return (
             Location.objects
             .annotate(
