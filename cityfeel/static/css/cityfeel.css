@@ -93,3 +93,70 @@ body {
 .alert {
   border-radius: 0.5rem;
 }
+
+/* ===== EMOTION MAP STYLES ===== */
+
+/* Cluster icons */
+.marker-cluster-custom {
+  background-clip: padding-box;
+  border-radius: 50%;
+}
+
+.marker-cluster-custom div {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.marker-cluster-custom div span {
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.marker-cluster-custom:hover div {
+  transform: scale(1.1);
+}
+
+/* Location popup */
+.location-popup {
+  min-width: 220px;
+  padding: 0.5rem 0;
+}
+
+.location-popup h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.location-popup .emotion-rating {
+  display: flex;
+  align-items: center;
+}
+
+.location-popup .stars {
+  letter-spacing: 2px;
+}
+
+/* Leaflet popup */
+.leaflet-popup-content {
+  margin: 1rem;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* CircleMarker hover */
+.leaflet-interactive:hover {
+  stroke-width: 3px;
+}
