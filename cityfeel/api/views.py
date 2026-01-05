@@ -1,7 +1,7 @@
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 
 from emotions.models import EmotionPoint
 from map.models import Location
@@ -20,14 +20,7 @@ class EmotionPointViewSet(ModelViewSet):
 class LocationViewSet(ReadOnlyModelViewSet):
     """
     ViewSet dla endpointu /api/locations/ (READ-ONLY).
-
-    Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
-    Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
-
-    Filtrowanie:
-    - ?name=Gdańsk - filtrowanie po nazwie (icontains)
-    - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
-    - ?bbox=18.5,54.3,18.7,54.4 - filtrowanie po bounding box
+    Zadanie #35: Zwraca average_rating i total_opinions (tylko publiczne).
     """
     serializer_class = LocationListSerializer
     permission_classes = [IsAuthenticated]
@@ -35,16 +28,17 @@ class LocationViewSet(ReadOnlyModelViewSet):
     filterset_class = LocationFilter
 
     def get_queryset(self):
-        """
-        Zwraca queryset z annotacją avg_emotional_value i emotion_points_count.
-        Średnia liczy ze WSZYSTKICH emotion_points (publicznych i prywatnych).
-        Lokalizacje bez emotion_points mają avg_emotional_value=null i count=0.
-        """
         return (
             Location.objects
             .annotate(
-                avg_emotional_value=Avg('emotion_points__emotional_value'),
-                emotion_points_count=Count('emotion_points')
+                average_rating=Avg(
+                    'emotion_points__emotional_value',
+                    filter=Q(emotion_points__privacy_status='public')
+                ),
+                total_opinions=Count(
+                    'emotion_points',
+                    filter=Q(emotion_points__privacy_status='public')
+                )
             )
-            .order_by('-avg_emotional_value', 'name')
+            .order_by('-total_opinions', 'name')
         )
