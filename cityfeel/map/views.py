@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.db.models import Avg, Count
+from django.urls import reverse_lazy
 
 from emotions.models import EmotionPoint
 from map.models import Location
@@ -10,7 +11,7 @@ class EmotionMapView(LoginRequiredMixin, TemplateView):
     """Main emotion map view - requires authentication."""
 
     template_name = 'map/emotion_map.html'
-    login_url = '/auth/login/'
+    login_url = reverse_lazy('cf_auth:login')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -18,13 +19,13 @@ class EmotionMapView(LoginRequiredMixin, TemplateView):
         # context['emotion_points'] = EmotionPoint.objects.filter(privacy_status='public')
         return context
 
-
+# TODO: WIDOK I TEMPLATKA NIE JEST SKONCZONA
 class LocationDetailView(LoginRequiredMixin, DetailView):
     """Widok szczegółowy lokalizacji z publicznymi emotion points i statystykami."""
     model = Location
     template_name = 'map/location_detail.html'
     context_object_name = 'location'
-    login_url = '/auth/login/'
+    login_url = reverse_lazy('cf_auth:login')
 
     def get_queryset(self):
         return Location.objects.annotate(
@@ -41,7 +42,7 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             EmotionPoint.objects
             .filter(location=location, privacy_status='public')
             .select_related('user')
-            .prefetch_related('comment_set')
+            # .prefetch_related('comment_set')
             .order_by('-created_at')
         )
 
