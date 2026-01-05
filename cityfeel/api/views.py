@@ -20,7 +20,7 @@ class EmotionPointViewSet(ModelViewSet):
 class LocationViewSet(ReadOnlyModelViewSet):
     """
     ViewSet dla endpointu /api/locations/ (READ-ONLY).
-    Zadanie #35: Zwraca average_rating i total_opinions (tylko publiczne).
+    Zwraca avg_emotional_value i emotion_points_count (tylko publiczne).
     """
     serializer_class = LocationListSerializer
     permission_classes = [IsAuthenticated]
@@ -31,14 +31,14 @@ class LocationViewSet(ReadOnlyModelViewSet):
         return (
             Location.objects
             .annotate(
-                average_rating=Avg(
+                avg_emotional_value=Avg(
                     'emotion_points__emotional_value',
                     filter=Q(emotion_points__privacy_status='public')
                 ),
-                total_opinions=Count(
+                emotion_points_count=Count(
                     'emotion_points',
                     filter=Q(emotion_points__privacy_status='public')
                 )
             )
-            .order_by('-total_opinions', 'name')
+            .order_by('-emotion_points_count', 'name')
         )

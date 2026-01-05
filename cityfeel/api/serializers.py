@@ -33,10 +33,6 @@ from map.models import Location
     }
 })
 class PointField(serializers.Field):
-    """
-    Custom serializer field dla django.contrib.gis.db.models.fields.PointField.
-    Konwertuje PostGIS Point na format {latitude, longitude} i odwrotnie.
-    """
     def to_representation(self, value):
         if value is None:
             return None
@@ -48,7 +44,6 @@ class PointField(serializers.Field):
     def to_internal_value(self, data):
         if not isinstance(data, dict):
             raise serializers.ValidationError("Wspolrzedne musza byc w formacie obiektu.")
-
         latitude = data.get('latitude')
         longitude = data.get('longitude')
 
@@ -74,9 +69,6 @@ class PointField(serializers.Field):
 
 
 class LocationSerializer(serializers.ModelSerializer):
-    """
-    Podstawowy serializer dla modelu Location.
-    """
     coordinates = PointField()
 
     class Meta:
@@ -84,27 +76,23 @@ class LocationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'coordinates']
         read_only_fields = ['id']
         extra_kwargs = {
-            'name': {
-                'required': False,
-                'allow_blank': False,
-                'max_length': 200,
-            }
+            'name': {'required': False, 'allow_blank': False, 'max_length': 200}
         }
 
 
 class LocationListSerializer(serializers.ModelSerializer):
     """
-    Serializer dla endpointu GET /api/locations/.
-    Zadanie #35: Dodano average_rating i total_opinions.
+    Serializer dla listy lokalizacji.
+    Używa starych nazw: avg_emotional_value, emotion_points_count.
     """
     coordinates = PointField()
-    average_rating = serializers.FloatField(read_only=True)
-    total_opinions = serializers.IntegerField(read_only=True)
+    avg_emotional_value = serializers.FloatField(read_only=True)
+    emotion_points_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Location
-        fields = ['id', 'name', 'coordinates', 'average_rating', 'total_opinions']
-        read_only_fields = ['id', 'name', 'coordinates', 'average_rating', 'total_opinions']
+        fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
+        read_only_fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
 
 
 class EmotionPointSerializer(serializers.ModelSerializer):
@@ -113,13 +101,7 @@ class EmotionPointSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmotionPoint
-        fields = [
-            'id',
-            'location',
-            'emotional_value',
-            'privacy_status',
-            'username',
-        ]
+        fields = ['id', 'location', 'emotional_value', 'privacy_status', 'username']
         read_only_fields = ['id']
         extra_kwargs = {
             'emotional_value': {
@@ -161,4 +143,4 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         except EmotionPoint.DoesNotExist:
             emotion_point = EmotionPoint.objects.create(user=user, location=location, **validated_data)
 
-        return emotion_point    
+        return emotion_point
