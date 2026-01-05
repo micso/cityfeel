@@ -3,16 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\admin\\cityfeel\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\admin\\cityfeel\\cityfeel\\api\\urls.py||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:cityfeel\\api\\urls.py||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\admin\\cityfeel\\cityfeel\\api\\views.py||{3B902123-F8A7-4915-9F01-361F908088D0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:cityfeel\\api\\views.py||{3B902123-F8A7-4915-9F01-361F908088D0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\admin\\cityfeel\\cityfeel\\api\\serializers.py||{3B902123-F8A7-4915-9F01-361F908088D0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:cityfeel\\api\\serializers.py||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\admin\\cityfeel\\cityfeel\\api\\urls.py||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:cityfeel\\api\\urls.py||{3B902123-F8A7-4915-9F01-361F908088D0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,7 +22,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -38,7 +38,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "urls.py",
               "DocumentMoniker": "C:\\Users\\admin\\cityfeel\\cityfeel\\api\\urls.py",
               "RelativeDocumentMoniker": "cityfeel\\api\\urls.py",
@@ -46,34 +46,32 @@
               "RelativeToolTip": "cityfeel\\api\\urls.py",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAABEAAAAnAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
-              "WhenOpened": "2026-01-04T22:28:13.198Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T22:28:13.198Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "views.py",
               "DocumentMoniker": "C:\\Users\\admin\\cityfeel\\cityfeel\\api\\views.py",
               "RelativeDocumentMoniker": "cityfeel\\api\\views.py",
               "ToolTip": "C:\\Users\\admin\\cityfeel\\cityfeel\\api\\views.py",
               "RelativeToolTip": "cityfeel\\api\\views.py",
-              "ViewState": "AQIAAAcAAAAAAAAAAAAkwCUAAAAlAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAkwBgAAAAJAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
               "WhenOpened": "2026-01-04T22:28:00.727Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "serializers.py",
               "DocumentMoniker": "C:\\Users\\admin\\cityfeel\\cityfeel\\api\\serializers.py",
               "RelativeDocumentMoniker": "cityfeel\\api\\serializers.py",
               "ToolTip": "C:\\Users\\admin\\cityfeel\\cityfeel\\api\\serializers.py",
               "RelativeToolTip": "cityfeel\\api\\serializers.py",
-              "ViewState": "AQIAAHsAAAAAAAAAAAAkwJkAAAASAAAA",
+              "ViewState": "AQIAAFsAAAAAAAAAAAAkwHkAAAAcAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
-              "WhenOpened": "2026-01-04T22:27:52.235Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-04T22:27:52.235Z"
             }
           ]
         }
