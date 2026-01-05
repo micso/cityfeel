@@ -1,4 +1,4 @@
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Avg, Count, Q
@@ -16,16 +16,13 @@ class EmotionPointViewSet(ModelViewSet):
     filterset_fields = ['emotional_value']
 
 
-class LocationViewSet(ModelViewSet):
-    """
-    Endpoint GET /api/locations/
-    Zadanie #35: Zwraca srednia ocene i liczbe opinii.
-    """
+class LocationViewSet(ReadOnlyModelViewSet):
+
     serializer_class = LocationSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'head', 'options']
 
     def get_queryset(self):
+        # Django ORM aggregation (Avg, Count)
         return Location.objects.annotate(
             average_rating=Avg(
                 'emotion_points__emotional_value',
