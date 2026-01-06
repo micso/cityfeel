@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Profil - {{ profile_user.username }} - CityFeel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <!-- Nagłówek profilu -->
+        <div class="row mb-4">
+          <div class="col-md-3 text-center">
+            {% if profile_user.avatar %}
+              <img src="{{ profile_user.avatar.url }}"
+                   alt="Avatar {{ profile_user.username }}"
+                   class="rounded-circle img-fluid border border-primary"
+                   style="max-width: 150px; max-height: 150px; object-fit: cover;">
+            {% else %}
+              <!-- Fallback avatar - inicjał użytkownika -->
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto"
+                   style="width: 150px; height: 150px; font-size: 3rem;">
+                {{ profile_user.username|slice:":1"|upper }}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="col-md-9">
+            <h2 class="text-primary mb-2">
+              {% if profile_user.first_name and profile_user.last_name %}
+                {{ profile_user.first_name }} {{ profile_user.last_name }}
+              {% else %}
+                {{ profile_user.username }}
+              {% endif %}
+            </h2>
+
+            {% if profile_user.first_name or profile_user.last_name %}
+              <p class="text-muted">@{{ profile_user.username }}</p>
+            {% endif %}
+
+            {% if profile_user.description %}
+              <p class="mt-3">{{ profile_user.description }}</p>
+            {% endif %}
+
+            <!-- Przycisk edycji (tylko dla własnego profilu) -->
+            {% if is_own_profile %}
+              <div class="mt-3">
+                <a href="{% url 'cf_auth:profile_edit' %}" class="btn btn-primary">
+                  Edytuj profil
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- Statystyki -->
+        <div class="row text-center mb-4">
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h3 class="text-primary mb-0">{{ total_emotions }}</h3>
+                <p class="text-muted mb-0">Wszystkie emocje</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h3 class="text-success mb-0">{{ public_emotions }}</h3>
+                <p class="text-muted mb-0">Publiczne</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h3 class="text-secondary mb-0">{{ private_emotions }}</h3>
+                <p class="text-muted mb-0">Prywatne</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- Ostatnio dodane emocje -->
+        <h4 class="text-primary mb-3">Ostatnio dodane emocje (publiczne)</h4>
+
+        {% if recent_emotions %}
+          <div class="list-group">
+            {% for emotion in recent_emotions %}
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1">{{ emotion.location.name }}</h6>
+                    <small class="text-muted">
+                      {{ emotion.created_at|date:"d.m.Y H:i" }}
+                    </small>
+                  </div>
+                  <div>
+                    <!-- Ocena jako badge -->
+                    <span class="badge bg-primary fs-6">
+                      {{ emotion.emotional_value }}/5
+                    </span>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted">Brak publicznych emocji do wyświetlenia.</p>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

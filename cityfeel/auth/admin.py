@@ -10,14 +10,14 @@ class CFUserAdmin(UserAdmin):
     # Add avatar to edit form
     fieldsets = UserAdmin.fieldsets + (
         ('Profile', {
-            'fields': ('avatar',),
+            'fields': ('avatar', 'description'),
         }),
     )
 
     # Add avatar to create form
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('Profile', {
-            'fields': ('avatar',),
+            'fields': ('avatar', 'description'),
         }),
     )
 

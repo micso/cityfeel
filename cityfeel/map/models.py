@@ -8,17 +8,17 @@ class Location(models.Model):
     """
     name = models.CharField(
         max_length=200,
-        help_text="Name of the location"
+        help_text="Nazwa lokalizacji"
     )
 
     coordinates = models.PointField(
         srid=4326,
-        help_text="Geographic coordinates (longitude, latitude)"
+        help_text="Współrzędne geograficzne (długość, szerokość)"
     )
 
     class Meta:
-        verbose_name = "Location"
-        verbose_name_plural = "Locations"
+        verbose_name = "Lokalizacja"
+        verbose_name_plural = "Lokalizacje"
         db_table = "map_location"
         indexes = [
             models.Index(fields=['name'], name='location_name_idx'),
