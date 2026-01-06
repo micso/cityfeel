@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from map.models import Location
@@ -113,3 +114,29 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Komentarz użytkownika {self.user} do punktu {self.emotion_point_id}"
+
+
+# --- WAŻNE: Funkcja walidująca musi być tutaj (bez wcięć, przy lewej krawędzi) ---
+def validate_image_size(image):
+    file_size = image.size
+    limit_mb = 5
+    if file_size > limit_mb * 1024 * 1024:
+        raise ValidationError(f"Maksymalny rozmiar pliku to {limit_mb}MB")
+
+
+class Photo(models.Model):
+    emotion_point = models.ForeignKey(
+        EmotionPoint, 
+        on_delete=models.CASCADE, 
+        related_name='photos'
+    )
+    # Django automatycznie obsłuży "photo_url" poprzez atrybut .url na tym polu
+    image = models.ImageField(
+        upload_to='emotion_photos/%Y/%m/%d/',
+        validators=[validate_image_size]
+    )
+    caption = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Zdjęcie do punktu {self.emotion_point.id}"

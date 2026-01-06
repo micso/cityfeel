@@ -1,11 +1,9 @@
 from django.contrib import admin
-from .models import EmotionPoint
-
+from .models import EmotionPoint, Comment, Photo
 
 @admin.register(EmotionPoint)
 class EmotionPointAdmin(admin.ModelAdmin):
     """Admin interface for EmotionPoint."""
-
     list_display = ['user', 'location', 'emotional_value', 'privacy_status', 'created_at']
     list_filter = ['privacy_status', 'emotional_value', 'created_at']
     search_fields = ['user__username', 'location__name']
@@ -28,3 +26,11 @@ class EmotionPointAdmin(admin.ModelAdmin):
         """Optimize queries with select_related."""
         qs = super().get_queryset(request)
         return qs.select_related('user', 'location')
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'emotion_point', 'created_at')
+
+@admin.register(Photo)
+class PhotoAdmin(admin.ModelAdmin):
+    list_display = ('emotion_point', 'created_at', 'caption')

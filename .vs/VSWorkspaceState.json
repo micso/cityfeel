@@ -1,0 +1,13 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\cityfeel",
+    "\\cityfeel\\cityfeel",
+    "\\cityfeel\\emotions",
+    "\\cityfeel\\map\\templates",
+    "\\docker\\db",
+    "\\docker\\web"
+  ],
+  "SelectedNode": "\\cityfeel\\emotions\\admin.py",
+  "PreviewInSolutionExplorer": false
+}
