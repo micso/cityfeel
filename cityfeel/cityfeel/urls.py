@@ -24,6 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('auth.urls')),
     path('map/', include('map.urls')),
+    path('emotions/', include('emotions.urls')),
     path('api/', include('api.urls')),
     path('', EmotionMapView.as_view(), name='home'),
 ]
