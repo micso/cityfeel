@@ -25,10 +25,28 @@
   let debounceTimer = null;
   let currentBounds = null;
 
+  // Stan dla dodawania emocji
+  let addEmotionModal = null;
+  let isUserAuthenticated = false;
+  let selectedCoordinates = null;
+  let proximityRadius = 50; // domyślnie 50m, nadpisane z data-attribute
+  let emotionPointsUrl = '/api/emotion-points/'; // fallback, nadpisane z data-attribute
+
   // === INICJALIZACJA ===
   function init() {
     // Mapa jest już zainicjalizowana w template jako window.map
     map = window.map;
+
+    // Sprawdź czy user jest zalogowany i pobierz konfigurację z data-attributes
+    const mapElement = document.getElementById('map');
+    isUserAuthenticated = mapElement.dataset.userAuthenticated === 'true';
+    proximityRadius = parseInt(mapElement.dataset.proximityRadius, 10) || 50;
+    emotionPointsUrl = mapElement.dataset.emotionPointsUrl || '/api/emotion-points/';
+
+    // Inicjalizacja funkcjonalności dodawania emocji (tylko dla zalogowanych)
+    if (isUserAuthenticated) {
+      initAddEmotionFeature();
+    }
 
     // Cluster group
     markerClusterGroup = L.markerClusterGroup({
@@ -84,7 +102,7 @@
   }
 
   // === LOADING LOCATIONS ===
-  function loadVisibleLocations() {
+  function loadVisibleLocations(force = false) {
     const bounds = map.getBounds();
     const bbox = [
       bounds.getSouthWest().lng,
@@ -93,11 +111,12 @@
       bounds.getNorthEast().lat
     ].join(',');
 
-    // Sprawdź czy bounds się zmieniły
-    if (currentBounds === bbox) return;
+    // Sprawdź czy bounds się zmieniły (chyba że force=true)
+    if (!force && currentBounds === bbox) return;
     currentBounds = bbox;
 
-    // Pobierz API URL z data attribute
+    // Pobierz API URL z data attribute (generowany przez {% url 'api:locations-list' %})
+    // Fallback '/api/locations/' używany tylko w razie problemów z template
     const apiUrl = document.getElementById('map').dataset.apiUrl || '/api/locations/';
     const url = `${apiUrl}?bbox=${bbox}`;
 
@@ -220,6 +239,390 @@
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => func.apply(this, args), delay);
     };
+  }
+
+  // === ADD EMOTION FEATURE ===
+
+  /**
+   * Inicjalizacja funkcjonalności dodawania emocji.
+   * Wywoływana tylko dla zalogowanych użytkowników.
+   */
+  function initAddEmotionFeature() {
+    // Inicjalizacja Bootstrap Modal
+    const modalElement = document.getElementById('addEmotionModal');
+    if (!modalElement) {
+      console.warn('Modal #addEmotionModal nie został znaleziony w HTML');
+      return;
+    }
+
+    addEmotionModal = new bootstrap.Modal(modalElement);
+
+    // Event listener dla kliknięcia na mapę
+    map.on('click', handleMapClick);
+
+    // Dodaj wizualną wskazówkę (cursor: crosshair)
+    document.getElementById('map').classList.add('clickable-map');
+
+    // Inicjalizacja interaktywnych gwiazdek
+    initStarRating();
+
+    // Event listener dla przycisku Submit
+    document.getElementById('submitEmotion').addEventListener('click', handleEmotionSubmit);
+
+    // Event listener dla zamknięcia modala - reset formularza
+    modalElement.addEventListener('hidden.bs.modal', resetEmotionForm);
+  }
+
+  /**
+   * Obsługa kliknięcia na mapę.
+   * Otwiera modal z formularzem dodawania emocji.
+   */
+  function handleMapClick(e) {
+    const { lat, lng } = e.latlng;
+
+    // Zapisz współrzędne
+    selectedCoordinates = { latitude: lat, longitude: lng };
+
+    // Wyświetl współrzędne w modalu
+    document.getElementById('coordinatesDisplay').textContent =
+      `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+    // Sprawdź proximity matching
+    checkProximityAndShowInfo(lat, lng);
+
+    // Otwórz modal
+    addEmotionModal.show();
+  }
+
+  /**
+   * Sprawdza czy w pobliżu klikniętego punktu (w promieniu proximityRadius)
+   * istnieje już jakaś lokalizacja i wyświetla info o tym w modalu.
+   */
+  function checkProximityAndShowInfo(lat, lng) {
+    const proximityInfo = document.getElementById('proximityInfo');
+    const proximityText = document.getElementById('proximityText');
+    const locationNameContainer = document.getElementById('locationNameContainer');
+
+    // Pobierz wszystkie markery z cluster group
+    const allMarkers = markerClusterGroup.getLayers();
+
+    // Znajdź najbliższy marker w promieniu
+    let closestMarker = null;
+    let minDistance = Infinity;
+
+    allMarkers.forEach(marker => {
+      const markerLatLng = marker.getLatLng();
+      const distance = map.distance([lat, lng], markerLatLng);
+
+      if (distance < proximityRadius && distance < minDistance) {
+        minDistance = distance;
+        closestMarker = marker;
+      }
+    });
+
+    // Pokaż info jeśli znaleziono bliską lokalizację
+    if (closestMarker) {
+      const popupContent = closestMarker.getPopup().getContent();
+
+      // Wyciągnij nazwę lokalizacji z popup HTML (parsing)
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = popupContent;
+      const locationName = tempDiv.querySelector('h5').textContent;
+
+      proximityText.textContent =
+        `Twoja ocena zostanie przypisana do: "${locationName}" (${Math.round(minDistance)}m od kliknięcia)`;
+      proximityInfo.classList.remove('d-none');
+      proximityInfo.classList.add('alert-info');
+
+      // Ukryj pole nazwy - przypisujemy do istniejącej lokalizacji
+      locationNameContainer.classList.add('d-none');
+    } else {
+      proximityText.textContent = 'Utworzysz nową lokalizację w tym miejscu';
+      proximityInfo.classList.remove('d-none');
+      proximityInfo.classList.add('alert-warning');
+
+      // Pokaż pole nazwy - użytkownik tworzy nową lokalizację
+      locationNameContainer.classList.remove('d-none');
+    }
+  }
+
+  /**
+   * Inicjalizacja interaktywnych gwiazdek (click, hover preview).
+   */
+  function initStarRating() {
+    const starRating = document.getElementById('starRating');
+    const stars = starRating.querySelectorAll('label');
+    const radios = starRating.querySelectorAll('input[type="radio"]');
+
+    // Hover effect - preview
+    stars.forEach((star, index) => {
+      star.addEventListener('mouseenter', function() {
+        // Podświetl gwiazdki od prawej do tej nad którą jest hover
+        for (let i = stars.length - 1; i >= index; i--) {
+          stars[i].style.color = '#f39c12';
+        }
+        // Przyciemnij pozostałe
+        for (let i = index - 1; i >= 0; i--) {
+          stars[i].style.color = '#ddd';
+        }
+      });
+    });
+
+    // Usunięcie hover - powrót do checked state
+    starRating.addEventListener('mouseleave', function() {
+      const checkedRadio = starRating.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) {
+        updateStarsDisplay(checkedRadio);
+      } else {
+        // Wszystkie gwiazdki szare
+        stars.forEach(star => star.style.color = '#ddd');
+      }
+    });
+
+    // Click - zaznacz i zapisz
+    radios.forEach(radio => {
+      radio.addEventListener('change', function() {
+        updateStarsDisplay(this);
+      });
+    });
+  }
+
+  /**
+   * Aktualizuje wyświetlanie gwiazdek na podstawie zaznaczonego radio.
+   */
+  function updateStarsDisplay(checkedRadio) {
+    const starRating = document.getElementById('starRating');
+    const stars = starRating.querySelectorAll('label');
+    const value = parseInt(checkedRadio.value, 10);
+
+    // Wypełnij gwiazdki od prawej (5) do zaznaczonej wartości
+    stars.forEach((star, index) => {
+      const starValue = 5 - index; // gwiazdki są w odwrotnej kolejności w HTML
+      if (starValue <= value) {
+        star.style.color = '#f39c12'; // żółty
+      } else {
+        star.style.color = '#ddd'; // szary
+      }
+    });
+  }
+
+  /**
+   * Obsługa wysłania formularza - dodanie emocji.
+   */
+  async function handleEmotionSubmit() {
+    // Pobierz wartości z formularza
+    const emotionalValue = document.querySelector('input[name="emotional_value"]:checked');
+    const privacyStatus = document.getElementById('privacyStatus').value;
+    const locationNameInput = document.getElementById('locationName');
+    const locationNameContainer = document.getElementById('locationNameContainer');
+
+    // Walidacja
+    if (!emotionalValue) {
+      showEmotionError('Musisz wybrać ocenę (kliknij na gwiazdki).');
+      return;
+    }
+
+    // Ukryj błędy
+    hideEmotionErrors();
+
+    // Pokaż spinner
+    const submitBtn = document.getElementById('submitEmotion');
+    const submitText = document.getElementById('submitText');
+    const submitSpinner = document.getElementById('submitSpinner');
+
+    submitBtn.disabled = true;
+    submitText.classList.add('d-none');
+    submitSpinner.classList.remove('d-none');
+
+    // Przygotuj dane lokalizacji
+    const locationData = {
+      coordinates: {
+        latitude: selectedCoordinates.latitude,
+        longitude: selectedCoordinates.longitude
+      }
+    };
+
+    // Jeśli pole nazwy jest widoczne i wypełnione, dodaj name
+    if (!locationNameContainer.classList.contains('d-none')) {
+      const locationName = locationNameInput.value.trim();
+      if (locationName) {
+        locationData.name = locationName;
+      }
+    }
+
+    // Przygotuj payload
+    const payload = {
+      location: locationData,
+      emotional_value: parseInt(emotionalValue.value, 10),
+      privacy_status: privacyStatus
+    };
+
+    try {
+      // Pobierz CSRF token
+      const csrfToken = getCsrfToken();
+
+      // Wyślij POST request (URL z data-attribute, generowany przez {% url 'api:emotion_points-list' %})
+      const response = await fetch(emotionPointsUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(payload)
+      });
+
+      // Obsługa odpowiedzi
+      if (!response.ok) {
+        // Obsługa błędów walidacji
+        const errorData = await response.json();
+        handleApiErrors(errorData);
+        return;
+      }
+
+      // Sukces
+      const data = await response.json();
+      handleEmotionSuccess(data);
+
+    } catch (error) {
+      console.error('Network error:', error);
+      showEmotionError('Błąd połączenia. Sprawdź połączenie internetowe i spróbuj ponownie.');
+    } finally {
+      // Przywróć przycisk
+      submitBtn.disabled = false;
+      submitText.classList.remove('d-none');
+      submitSpinner.classList.add('d-none');
+    }
+  }
+
+  /**
+   * Obsługa sukcesu - zamknij modal, pokaż toast, odśwież mapę.
+   */
+  function handleEmotionSuccess(data) {
+    // Zamknij modal
+    addEmotionModal.hide();
+
+    // Pokaż toast sukcesu
+    const toastElement = document.getElementById('successToast');
+    const toastBody = document.getElementById('successMessage');
+
+    // Dostosuj komunikat
+    const locationName = data.location?.name || 'lokalizacja';
+    toastBody.textContent = `Twoja ocena została zapisana dla: ${locationName}`;
+
+    const toast = new bootstrap.Toast(toastElement, {
+      autohide: true,
+      delay: 4000
+    });
+    toast.show();
+
+    // Odśwież mapę - przeładuj widoczne lokalizacje (force=true aby pominąć sprawdzanie bounds)
+    loadVisibleLocations(true);
+  }
+
+  /**
+   * Obsługa błędów z API.
+   */
+  function handleApiErrors(errorData) {
+    let errorMessage = 'Wystąpił błąd podczas dodawania oceny.';
+
+    // Parsowanie błędów z DRF
+    if (errorData.emotional_value) {
+      errorMessage = Array.isArray(errorData.emotional_value)
+        ? errorData.emotional_value[0]
+        : errorData.emotional_value;
+    } else if (errorData.location) {
+      if (errorData.location.coordinates) {
+        if (errorData.location.coordinates.latitude) {
+          errorMessage = errorData.location.coordinates.latitude;
+        } else if (errorData.location.coordinates.longitude) {
+          errorMessage = errorData.location.coordinates.longitude;
+        }
+      }
+    } else if (errorData.privacy_status) {
+      errorMessage = Array.isArray(errorData.privacy_status)
+        ? errorData.privacy_status[0]
+        : errorData.privacy_status;
+    } else if (errorData.detail) {
+      errorMessage = errorData.detail;
+    } else if (errorData.non_field_errors) {
+      errorMessage = Array.isArray(errorData.non_field_errors)
+        ? errorData.non_field_errors[0]
+        : errorData.non_field_errors;
+    }
+
+    showEmotionError(errorMessage);
+  }
+
+  /**
+   * Wyświetla błąd w modalu.
+   */
+  function showEmotionError(message) {
+    const errorsDiv = document.getElementById('emotionErrors');
+    errorsDiv.textContent = message;
+    errorsDiv.classList.remove('d-none');
+  }
+
+  /**
+   * Ukrywa błędy w modalu.
+   */
+  function hideEmotionErrors() {
+    const errorsDiv = document.getElementById('emotionErrors');
+    errorsDiv.classList.add('d-none');
+  }
+
+  /**
+   * Resetuje formularz po zamknięciu modala.
+   */
+  function resetEmotionForm() {
+    // Odznacz wszystkie radio buttons
+    const radios = document.querySelectorAll('input[name="emotional_value"]');
+    radios.forEach(radio => radio.checked = false);
+
+    // Reset gwiazdek - wszystkie szare
+    const stars = document.querySelectorAll('#starRating label');
+    stars.forEach(star => star.style.color = '#ddd');
+
+    // Resetuj privacy status
+    document.getElementById('privacyStatus').value = 'public';
+
+    // Wyczyść i ukryj pole nazwy lokalizacji
+    const locationNameInput = document.getElementById('locationName');
+    const locationNameContainer = document.getElementById('locationNameContainer');
+    locationNameInput.value = '';
+    locationNameContainer.classList.add('d-none');
+
+    // Ukryj komunikaty
+    hideEmotionErrors();
+    const proximityInfo = document.getElementById('proximityInfo');
+    proximityInfo.classList.add('d-none');
+    proximityInfo.classList.remove('alert-info', 'alert-warning');
+
+    // Wyczyść współrzędne
+    selectedCoordinates = null;
+    document.getElementById('coordinatesDisplay').textContent = '-';
+  }
+
+  /**
+   * Pobiera CSRF token z cookies.
+   */
+  function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+
+    return cookieValue;
   }
 
   // === AUTO-INIT ===

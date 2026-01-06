@@ -10,6 +10,15 @@ from .filters import LocationFilter
 
 
 class EmotionPointViewSet(ModelViewSet):
+    """
+    ViewSet dla endpointu /api/emotion-points/.
+
+    GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+    POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+    Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+    lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+    """
     queryset = EmotionPoint.objects.filter(privacy_status='public').order_by('-created_at')
     serializer_class = EmotionPointSerializer
     permission_classes = [IsAuthenticated]

@@ -79,3 +79,11 @@ cityfeel/
 - Style: minimalistyczny design, kolory białe i niebieskie
 - Model użytkownika: CFUser (rozszerza AbstractUser)
 - Namespace URL dla auth: `cf_auth`
+
+## Model prywatności EmotionPoint
+
+Każdy EmotionPoint ma pole `privacy_status` z dwoma wartościami:
+- **public**: Emocja publiczna - widoczna na mapie, w statystykach lokalizacji I na profilu użytkownika (z imieniem i nazwiskiem)
+- **private**: Emocja prywatna/anonimowa - widoczna na mapie i w statystykach lokalizacji, ALE NIE na profilu użytkownika (nie można przypisać do konkretnej osoby)
+
+**Ważne**: Wszystkie emocje (publiczne i prywatne) są widoczne na mapie i wpływają na statystyki lokalizacji. Różnica polega tylko na tym, czy pokazujemy autora emocji.

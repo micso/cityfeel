@@ -267,6 +267,15 @@ uv run cityfeel/manage.py test
 uv run cityfeel/manage.py collectstatic
 ```
 
+## Model prywatności EmotionPoint
+
+Każdy punkt emocji (`EmotionPoint`) ma pole `privacy_status` z dwoma wartościami:
+
+- **public** (Publiczny): Emocja widoczna na mapie, w statystykach lokalizacji I na profilu użytkownika. Pokazuje imię i nazwisko autora.
+- **private** (Prywatny/Anonimowy): Emocja widoczna na mapie i w statystykach lokalizacji, ALE NIE na profilu użytkownika. Nie można przypisać do konkretnej osoby.
+
+**Ważne**: Wszystkie emocje (publiczne i prywatne) są widoczne na mapie i wpływają na statystyki lokalizacji. Różnica polega tylko na tym, czy pokazujemy autora emocji.
+
 ## Technologie
 
 Ten projekt wykorzystuje:
