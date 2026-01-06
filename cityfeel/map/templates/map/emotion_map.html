@@ -9,7 +9,103 @@
 <!-- Full-screen map container -->
 <div id="map"
      style="height: calc(100vh - 56px); width: 100%;"
-     data-api-url="/api/locations/">
+     data-api-url="{% url 'api:locations-list' %}"
+     data-emotion-points-url="{% url 'api:emotion_points-list' %}"
+     data-user-authenticated="{{ user.is_authenticated|lower }}"
+     data-proximity-radius="{{ settings.CITYFEEL_LOCATION_PROXIMITY_RADIUS }}">
+</div>
+
+<!-- Modal dodawania emocji -->
+<div class="modal fade" id="addEmotionModal" tabindex="-1" aria-labelledby="addEmotionModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header border-0">
+        <h5 class="modal-title" id="addEmotionModalLabel">Oceń to miejsce</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <!-- Proximity info (ukryte domyślnie) -->
+        <div id="proximityInfo" class="alert d-none mb-3" role="alert">
+          <span id="proximityText"></span>
+        </div>
+
+        <!-- Error messages -->
+        <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
+
+        <!-- Location name (widoczne tylko dla nowych lokalizacji) -->
+        <div class="mb-3 d-none" id="locationNameContainer">
+          <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
+          <input type="text" class="form-control" id="locationName" name="location_name" maxlength="200" placeholder="np. Park Oliwski, Gdańsk Główny...">
+          <small class="form-text text-muted">
+            Opcjonalne - jeśli nie podasz, zostanie wygenerowana automatycznie na podstawie współrzędnych.
+          </small>
+        </div>
+
+        <!-- Emotional value selector - gwiazdki (required) -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Twoja ocena <span class="text-danger">*</span></label>
+          <div class="star-rating" id="starRating">
+            <input type="radio" name="emotional_value" id="star5" value="5" required>
+            <label for="star5" title="Bardzo pozytywnie (5)">★</label>
+
+            <input type="radio" name="emotional_value" id="star4" value="4">
+            <label for="star4" title="Pozytywnie (4)">★</label>
+
+            <input type="radio" name="emotional_value" id="star3" value="3">
+            <label for="star3" title="Neutralnie (3)">★</label>
+
+            <input type="radio" name="emotional_value" id="star2" value="2">
+            <label for="star2" title="Negatywnie (2)">★</label>
+
+            <input type="radio" name="emotional_value" id="star1" value="1">
+            <label for="star1" title="Bardzo negatywnie (1)">★</label>
+          </div>
+          <small class="form-text text-muted">Kliknij gwiazdkę aby ocenić miejsce</small>
+        </div>
+
+        <!-- Privacy status selector -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Prywatność</label>
+          <select class="form-select" id="privacyStatus" name="privacy_status">
+            <option value="public" selected>Publiczna - z Twoim imieniem i nazwiskiem</option>
+            <option value="private">Prywatna - anonimowa</option>
+          </select>
+          <small class="form-text text-muted">
+            Wszystkie emocje są widoczne na mapie i wpływają na statystyki. Prywatne emocje są anonimowe - nie pokazują kto je dodał i nie pojawiają się na Twoim profilu.
+          </small>
+        </div>
+
+        <!-- Coordinates display (readonly) -->
+        <div class="text-muted small">
+          <strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+        <button type="button" class="btn btn-primary" id="submitEmotion">
+          <span id="submitText">Dodaj ocenę</span>
+          <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast dla komunikatów sukcesu -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="successMessage">
+        Twoja ocena została zapisana!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Zamknij"></button>
+    </div>
+  </div>
 </div>
 {% endblock %}
 

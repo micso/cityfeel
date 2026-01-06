@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.db.models import Avg, Count
 from django.urls import reverse_lazy
+from django.conf import settings
 
 from emotions.models import EmotionPoint
 from map.models import Location
@@ -15,8 +16,10 @@ class EmotionMapView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # TODO: Add emotion points data when API is ready
-        # context['emotion_points'] = EmotionPoint.objects.filter(privacy_status='public')
+        # Dodaj proximity radius dla funkcjonalności dodawania emocji
+        context['settings'] = {
+            'CITYFEEL_LOCATION_PROXIMITY_RADIUS': settings.CITYFEEL_LOCATION_PROXIMITY_RADIUS
+        }
         return context
 
 # TODO: WIDOK I TEMPLATKA NIE JEST SKONCZONA

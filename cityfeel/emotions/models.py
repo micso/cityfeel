@@ -6,13 +6,18 @@ from map.models import Location
 
 class EmotionPoint(models.Model):
     """
-    User emotional feedback about a location.
-    Represents how users feel about specific city locations.
+    Punkt emocji - opinia użytkownika o lokalizacji.
+    Reprezentuje emocje użytkowników związane z konkretnymi miejscami w mieście.
+
+    Model prywatności:
+    - Wszystkie EmotionPoints (publiczne i prywatne) są widoczne na mapie i wpływają na statystyki lokalizacji
+    - public: Pokazuje autora (imię i nazwisko, widoczne na profilu użytkownika)
+    - private: Anonimowe - nie pokazuje kto je dodał (nie widoczne na profilu użytkownika)
     """
     # Emotional value range constants
     MIN_EMOTIONAL_VALUE = 1
     MAX_EMOTIONAL_VALUE = 5
-    
+
     PRIVACY_CHOICES = [
         ('public', 'Publiczny'),
         ('private', 'Prywatny'),
@@ -44,7 +49,7 @@ class EmotionPoint(models.Model):
         max_length=10,
         choices=PRIVACY_CHOICES,
         default='public',
-        help_text="Widoczność tego punktu emocji"
+        help_text="Status prywatności: 'public' (z imieniem i nazwiskiem, widoczne na profilu) lub 'private' (anonimowe, nie widoczne na profilu). Wszystkie emocje są widoczne na mapie."
     )
 
     created_at = models.DateTimeField(
