@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EmotionPoint
+from .models import EmotionPoint, Comment
 
 
 @admin.register(EmotionPoint)
@@ -28,3 +28,5 @@ class EmotionPointAdmin(admin.ModelAdmin):
         """Optimize queries with select_related."""
         qs = super().get_queryset(request)
         return qs.select_related('user', 'location')
+
+admin.site.register(Comment)
