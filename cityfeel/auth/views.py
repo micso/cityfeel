@@ -1,13 +1,14 @@
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
-from django.views.generic import CreateView, DetailView, UpdateView
+from django.views.generic import CreateView, DetailView, UpdateView, ListView
 from django.urls import reverse_lazy
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 
 from .forms import UserRegistrationForm, UserProfileEditForm
 from .models import CFUser
+from emotions.models import EmotionPoint
 
 
 class RegisterView(CreateView):
@@ -96,3 +97,36 @@ class UserProfileEditView(LoginRequiredMixin, UpdateView):
             'Twój profil został zaktualizowany.'
         )
         return response
+
+
+class CommunityView(LoginRequiredMixin, ListView):
+    """
+    Widok społeczności - lista użytkowników z ich statystykami.
+    Wyświetla tabelaryczny układ: użytkownik po lewej, szczegóły po prawej.
+    """
+    model = CFUser
+    template_name = 'auth/community.html'
+    context_object_name = 'users_list'
+    paginate_by = 10
+
+    def get_queryset(self):
+        # Pobieramy tylko publiczne emocje do wyświetlenia w "ostatnich aktywnościach"
+        public_emotions_qs = EmotionPoint.objects.filter(
+            privacy_status='public'
+        ).select_related('location').order_by('-created_at')
+
+        # Główne zapytanie o użytkowników
+        queryset = CFUser.objects.annotate(
+            # Liczymy wszystkie emocje
+            emotions_count=Count('emotion_points')
+        ).prefetch_related(
+            # Pobieramy 3 ostatnie publiczne emocje dla każdego usera
+            Prefetch('emotion_points', queryset=public_emotions_qs, to_attr='recent_public_emotions')
+        ).order_by('-date_joined')
+
+        # Wyszukiwarka po username
+        search_query = self.request.GET.get('q')
+        if search_query:
+            queryset = queryset.filter(username__icontains=search_query)
+
+        return queryset
