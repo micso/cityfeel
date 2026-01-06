@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Moi Znajomi - CityFeel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    
+    <h2 class="mb-4 text-primary">Centrum Znajomości</h2>
+
+    {% if pending_requests %}
+    <div class="card shadow-sm mb-4 border-warning">
+      <div class="card-header bg-warning-subtle">
+        <h5 class="mb-0 text-warning-emphasis">
+          Oczekujące zaproszenia
+        </h5>
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for req in pending_requests %}
+        <li class="list-group-item d-flex justify-content-between align-items-center" id="request-{{ req.id }}">
+          <div class="d-flex align-items-center">
+            {% if req.creator.avatar %}
+              <img src="{{ req.creator.avatar.url }}" class="rounded-circle me-3" width="40" height="40" style="object-fit: cover;">
+            {% else %}
+              <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                {{ req.creator.username|slice:":1"|upper }}
+              </div>
+            {% endif %}
+            <div>
+              <strong>{{ req.creator.username }}</strong> chce zostać Twoim znajomym.
+              <br><small class="text-muted">{{ req.created_at|timesince }} temu</small>
+            </div>
+          </div>
+          <div>
+            <button onclick="handleRequest({{ req.id }}, 'accepted')" class="btn btn-success btn-sm me-1">Akceptuj</button>
+            <button onclick="handleRequest({{ req.id }}, 'rejected')" class="btn btn-outline-danger btn-sm">Odrzuć</button>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">Twoi Znajomi ({{ friends.count }})</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if friends %}
+          <div class="list-group list-group-flush">
+            {% for friend in friends %}
+            <div class="list-group-item d-flex align-items-center p-3">
+              <a href="{% url 'cf_auth:profile' user_id=friend.id %}" class="text-decoration-none d-flex align-items-center w-100 text-dark">
+                {% if friend.avatar %}
+                  <img src="{{ friend.avatar.url }}" class="rounded-circle me-3 border" width="50" height="50" style="object-fit: cover;">
+                {% else %}
+                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                    {{ friend.username|slice:":1"|upper }}
+                  </div>
+                {% endif %}
+                <div>
+                  <h6 class="mb-0">{{ friend.username }}</h6>
+                  <small class="text-muted">{{ friend.first_name }} {{ friend.last_name }}</small>
+                </div>
+              </a>
+              <a href="{% url 'cf_auth:profile' user_id=friend.id %}" class="btn btn-outline-primary btn-sm">Profil</a>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <p class="text-muted mb-3">Nie masz jeszcze żadnych znajomych.</p>
+            <a href="{% url 'cf_auth:community' %}" class="btn btn-primary">Znajdź znajomych</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+async function handleRequest(requestId, status) {
+    const url = `/api/friendship/${requestId}/`;
+    const csrfToken = getCookie('csrftoken');
+
+    try {
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ status: status })
+        });
+
+        if (response.ok) {
+            // Usuń element z listy wizualnie
+            const el = document.getElementById(`request-${requestId}`);
+            if (el) el.remove();
+            
+            // Jeśli zaakceptowano, odśwież stronę by zaktualizować listę znajomych
+            if (status === 'accepted') {
+                location.reload();
+            }
+        } else {
+            alert('Wystąpił błąd podczas przetwarzania zaproszenia.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

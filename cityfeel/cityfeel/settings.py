@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'map.apps.MapConfig',
     'emotions.apps.EmotionsConfig',
     'api.apps.ApiConfig',
+    # Nowa aplikacja social
+    'social.apps.SocialConfig',
 ]
 
 

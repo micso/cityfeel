@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.db.models import Count, Q, Prefetch
 
 from emotions.models import EmotionPoint
+from social.models import Friendship
 from .forms import UserRegistrationForm, UserProfileEditForm
 from .models import CFUser
 
@@ -102,7 +103,7 @@ class UserProfileEditView(LoginRequiredMixin, UpdateView):
 class CommunityView(ListView):
     """
     Widok społeczności / lista użytkowników.
-    Wyświetla listę użytkowników, ich statystyki i ostatnią aktywność.
+    Wyświetla listę użytkowników, ich statystyki, ostatnią aktywność i status relacji.
     """
     model = CFUser
     template_name = 'auth/community.html'
@@ -125,8 +126,6 @@ class CommunityView(ListView):
         ).select_related('location').order_by('-created_at')
 
         # 3. Annotacja (liczba ocen) i Prefetch (ostatnie oceny)
-        # annotate: dodaje pole 'ratings_count'
-        # prefetch_related: pobiera powiązane oceny do atrybutu 'public_ratings'
         queryset = queryset.annotate(
             ratings_count=Count('emotion_points')
         ).prefetch_related(
@@ -138,4 +137,30 @@ class CommunityView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['search_query'] = self.request.GET.get('q', '')
+
+        # Logika sprawdzania relacji
+        if self.request.user.is_authenticated:
+            # Pobieramy listę użytkowników z obecnej strony paginacji
+            page_users = context['object_list'] if 'object_list' in context else context['users']
+
+            # Pobierz ID wyświetlanych użytkowników
+            page_user_ids = [u.id for u in page_users]
+
+            # Pobierz relacje gdzie user jest twórcą LUB celem, a druga strona jest na liście
+            friendships = Friendship.objects.filter(
+                (Q(creator=self.request.user) & Q(target_id__in=page_user_ids)) |
+                (Q(target=self.request.user) & Q(creator_id__in=page_user_ids))
+            )
+
+            # Stwórz mapę {user_id: friendship_object}
+            friendship_map = {}
+            for f in friendships:
+                # Jeśli ja stworzyłem, to kluczem jest target, jeśli ja jestem targetem, kluczem jest creator
+                other_id = f.target_id if f.creator_id == self.request.user.id else f.creator_id
+                friendship_map[other_id] = f
+
+            # Przypisz obiekt relacji do użytkownika w liście (tylko na potrzeby wyświetlania)
+            for u in page_users:
+                u.friendship_status = friendship_map.get(u.id)
+
         return context

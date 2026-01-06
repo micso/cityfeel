@@ -25,6 +25,7 @@ urlpatterns = [
     path('accounts/', include('auth.urls')),
     path('map/', include('map.urls')),
     path('api/', include('api.urls')),
+    path('social/', include('social.urls')),  # Dodana ścieżka dla widoków HTML social
     path('', RedirectView.as_view(pattern_name='map:emotion_map'), name='home'),
 ]
 
