@@ -10,3 +10,4 @@ db.sqlite3
 
 # Media files (user uploads)
 /media/
+.vs/ 
