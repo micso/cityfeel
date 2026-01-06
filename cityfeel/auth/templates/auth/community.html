@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Społeczność - CityFeel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="text-primary mb-0">Społeczność</h2>
+      <form class="d-flex" method="get">
+        <input class="form-control me-2" type="search" name="q" placeholder="Szukaj użytkownika..." value="{{ request.GET.q|default:'' }}" aria-label="Search">
+        <button class="btn btn-outline-primary" type="submit">Szukaj</button>
+      </form>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="list-group list-group-flush">
+        {% for list_user in users_list %}
+          <div class="list-group-item p-4">
+            <div class="row align-items-center">
+              
+              <div class="col-md-4 border-end">
+                <div class="d-flex align-items-center mb-3 mb-md-0">
+                  <div class="flex-shrink-0">
+                    {% if list_user.avatar %}
+                      <img src="{{ list_user.avatar.url }}" alt="{{ list_user.username }}" 
+                           class="rounded-circle border" style="width: 60px; height: 60px; object-fit: cover;">
+                    {% else %}
+                      <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                           style="width: 60px; height: 60px; font-size: 1.5rem;">
+                        {{ list_user.username|slice:":1"|upper }}
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div class="ms-3">
+                    <h5 class="mb-1">
+                      <a href="{% url 'cf_auth:profile' user_id=list_user.id %}" class="text-decoration-none text-dark fw-bold">
+                        {{ list_user.username }}
+                      </a>
+                    </h5>
+                    <small class="text-muted">Dołączył: {{ list_user.date_joined|date:"d.m.Y" }}</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-8">
+                <div class="row">
+                  <div class="col-sm-4 text-center text-sm-start mb-3 mb-sm-0">
+                    <span class="d-block text-muted small text-uppercase">Ocenionych miejsc</span>
+                    <span class="fs-4 fw-bold text-primary">{{ list_user.emotions_count }}</span>
+                  </div>
+
+                  <div class="col-sm-8">
+                    <span class="d-block text-muted small text-uppercase mb-2">Ostatnio ocenił:</span>
+                    {% if list_user.recent_public_emotions %}
+                      <div class="d-flex gap-2 flex-wrap">
+                        {% for emotion in list_user.recent_public_emotions|slice:":3" %}
+                          <span class="badge bg-light text-dark border d-flex align-items-center" title="{{ emotion.created_at|date:'d.m.Y' }}">
+                            {{ emotion.location.name|truncatechars:15 }}
+                            <span class="badge bg-primary ms-2 rounded-pill">{{ emotion.emotional_value }}</span>
+                          </span>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <small class="text-muted fst-italic">Brak publicznej aktywności</small>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        {% empty %}
+          <div class="p-5 text-center">
+            <p class="text-muted mb-0">Nie znaleziono użytkowników spełniających kryteria.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Poprzednia</a>
+          </li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+          <span class="page-link">Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+        </li>
+
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Następna</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
