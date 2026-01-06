@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\cityfeel",
+    "\\cityfeel\\api",
+    "\\cityfeel\\css",
+    "\\cityfeel\\map",
+    "\\cityfeel\\map\\templates",
+    "\\cityfeel\\map\\templates\\map",
+    "\\cityfeel\\static",
+    "\\cityfeel\\static\\js",
+    "\\cityfeel\\templates"
+  ],
+  "SelectedNode": "\\cityfeel\\map\\templates\\map\\emotion_map.html",
+  "PreviewInSolutionExplorer": false
+}

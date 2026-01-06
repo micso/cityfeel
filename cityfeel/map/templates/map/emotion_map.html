@@ -3,12 +3,12 @@
 
 {% block title %}Mapa Emocji - CityFeel{% endblock %}
 
-{% block main_attrs %}{% endblock %}
+{# Nadpisujemy atrybuty glownego kontenera MAIN, aby usunac marginesy i wlaczyc flexbox #}
+{% block main_attrs %}class="flex-grow-1 d-flex flex-column p-0 m-0"{% endblock %}
 
 {% block content %}
-<!-- Full-screen map container -->
 <div id="map"
-     style="height: calc(100vh - 56px); width: 100%;"
+     style="height: 85vh; width: 100%;"
      data-api-url="/api/locations/">
 </div>
 {% endblock %}
@@ -26,6 +26,5 @@
   }).addTo(window.map);
 </script>
 
-<!-- External map logic -->
 <script src="{% static 'js/map.js' %}"></script>
 {% endblock %}
