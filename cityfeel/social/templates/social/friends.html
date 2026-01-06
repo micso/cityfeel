@@ -1,129 +1,202 @@
-{% extends "base.html" %}
-
-{% block title %}Moi Znajomi - CityFeel{% endblock %}
+{% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
-    
-    <h2 class="mb-4 text-primary">Centrum Znajomości</h2>
+<div class="container mt-4">
+    <h2>Twoi Znajomi</h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Lista znajomych
+        </div>
+        <div class="card-body">
+            {% if friendships %}
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Użytkownik</th>
+                            <th>Data zawarcia znajomości</th>
+                            <th style="text-align: right;">Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in friendships %}
+                        {% if item.creator == user %}
+                            {% with friend=item.target %}
+                            <tr id="friend-row-{{ item.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if friend.avatar %}
+                                            <img src="{{ friend.avatar.url }}"
+                                                 alt="{{ friend.username }}"
+                                                 class="rounded-circle me-2"
+                                                 style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% else %}
+                                            <img src="https://ui-avatars.com/api/?name={{ friend.username }}&background=random&color=fff"
+                                                 alt="{{ friend.username }}"
+                                                 class="rounded-circle me-2"
+                                                 style="width: 40px; height: 40px;">
+                                        {% endif %}
+
+                                        <strong>{{ friend.username }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ item.created_at|date:"d.m.Y" }}</small>
+                                </td>
+                                <td style="text-align: right;">
+                                    <button class="btn btn-danger btn-sm" onclick="potwierdzUsuniecie('{{ item.id }}')">
+                                        Usuń
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endwith %}
+
+                        {% else %}
+                            {% with friend=item.creator %}
+                            <tr id="friend-row-{{ item.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if friend.avatar %}
+                                            <img src="{{ friend.avatar.url }}"
+                                                 alt="{{ friend.username }}"
+                                                 class="rounded-circle me-2"
+                                                 style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% else %}
+                                            <img src="https://ui-avatars.com/api/?name={{ friend.username }}&background=random&color=fff"
+                                                 alt="{{ friend.username }}"
+                                                 class="rounded-circle me-2"
+                                                 style="width: 40px; height: 40px;">
+                                        {% endif %}
+
+                                        <strong>{{ friend.username }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ item.created_at|date:"d.m.Y" }}</small>
+                                </td>
+                                <td style="text-align: right;">
+                                    <button class="btn btn-danger btn-sm" onclick="potwierdzUsuniecie('{{ item.id }}')">
+                                        Usuń
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% endif %}
+
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="text-center p-4">
+                    <p class="text-muted">Nie masz jeszcze żadnych znajomych.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 
     {% if pending_requests %}
-    <div class="card shadow-sm mb-4 border-warning">
-      <div class="card-header bg-warning-subtle">
-        <h5 class="mb-0 text-warning-emphasis">
-          Oczekujące zaproszenia
-        </h5>
-      </div>
-      <ul class="list-group list-group-flush">
-        {% for req in pending_requests %}
-        <li class="list-group-item d-flex justify-content-between align-items-center" id="request-{{ req.id }}">
-          <div class="d-flex align-items-center">
-            {% if req.creator.avatar %}
-              <img src="{{ req.creator.avatar.url }}" class="rounded-circle me-3" width="40" height="40" style="object-fit: cover;">
-            {% else %}
-              <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                {{ req.creator.username|slice:":1"|upper }}
-              </div>
-            {% endif %}
-            <div>
-              <strong>{{ req.creator.username }}</strong> chce zostać Twoim znajomym.
-              <br><small class="text-muted">{{ req.created_at|timesince }} temu</small>
-            </div>
-          </div>
-          <div>
-            <button onclick="handleRequest({{ req.id }}, 'accepted')" class="btn btn-success btn-sm me-1">Akceptuj</button>
-            <button onclick="handleRequest({{ req.id }}, 'rejected')" class="btn btn-outline-danger btn-sm">Odrzuć</button>
-          </div>
-        </li>
-        {% endfor %}
-      </ul>
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            Oczekujące zaproszenia
+        </div>
+        <div class="card-body">
+            <ul class="list-group">
+                {% for req in pending_requests %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        {% if req.creator.avatar %}
+                            <img src="{{ req.creator.avatar.url }}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                        {% else %}
+                            <img src="https://ui-avatars.com/api/?name={{ req.creator.username }}&background=random" class="rounded-circle me-2" style="width: 30px; height: 30px;">
+                        {% endif %}
+
+                        <span>Zaproszenie od: <strong>{{ req.creator.username }}</strong></span>
+                    </div>
+                    <span>
+                        <span class="badge bg-secondary">Oczekuje</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
     {% endif %}
 
-    <div class="card shadow-sm">
-      <div class="card-header bg-light">
-        <h5 class="mb-0">Twoi Znajomi ({{ friends.count }})</h5>
-      </div>
-      <div class="card-body p-0">
-        {% if friends %}
-          <div class="list-group list-group-flush">
-            {% for friend in friends %}
-            <div class="list-group-item d-flex align-items-center p-3">
-              <a href="{% url 'cf_auth:profile' user_id=friend.id %}" class="text-decoration-none d-flex align-items-center w-100 text-dark">
-                {% if friend.avatar %}
-                  <img src="{{ friend.avatar.url }}" class="rounded-circle me-3 border" width="50" height="50" style="object-fit: cover;">
-                {% else %}
-                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-size: 1.2rem;">
-                    {{ friend.username|slice:":1"|upper }}
-                  </div>
-                {% endif %}
-                <div>
-                  <h6 class="mb-0">{{ friend.username }}</h6>
-                  <small class="text-muted">{{ friend.first_name }} {{ friend.last_name }}</small>
-                </div>
-              </a>
-              <a href="{% url 'cf_auth:profile' user_id=friend.id %}" class="btn btn-outline-primary btn-sm">Profil</a>
-            </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="text-center py-5">
-            <p class="text-muted mb-3">Nie masz jeszcze żadnych znajomych.</p>
-            <a href="{% url 'cf_auth:community' %}" class="btn btn-primary">Znajdź znajomych</a>
-          </div>
-        {% endif %}
-      </div>
-    </div>
-
-  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
-async function handleRequest(requestId, status) {
-    const url = `/api/friendship/${requestId}/`;
-    const csrfToken = getCookie('csrftoken');
+    // Funkcja do pobierania CSRF tokena
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 
-    try {
-        const response = await fetch(url, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({ status: status })
+    // Wyświetlanie modala SweetAlert2
+    function potwierdzUsuniecie(friendshipId) {
+        Swal.fire({
+            title: 'Czy na pewno?',
+            text: "Tej operacji nie można cofnąć. Znajomość zostanie usunięta.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Tak, usuń!',
+            cancelButtonText: 'Anuluj'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                usunRelacjeAPI(friendshipId);
+            }
         });
-
-        if (response.ok) {
-            // Usuń element z listy wizualnie
-            const el = document.getElementById(`request-${requestId}`);
-            if (el) el.remove();
-            
-            // Jeśli zaakceptowano, odśwież stronę by zaktualizować listę znajomych
-            if (status === 'accepted') {
-                location.reload();
-            }
-        } else {
-            alert('Wystąpił błąd podczas przetwarzania zaproszenia.');
-        }
-    } catch (error) {
-        console.error('Error:', error);
     }
-}
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+    // Strzał do API
+    function usunRelacjeAPI(id) {
+        const csrftoken = getCookie('csrftoken');
+        const url = `/api/friendship/${id}/`;
+
+        fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                Swal.fire(
+                    'Usunięto!',
+                    'Użytkownik został usunięty z Twoich znajomych.',
+                    'success'
+                );
+
+                // Usuwamy wiersz z tabeli z animacją
+                const wiersz = document.getElementById(`friend-row-${id}`);
+                if (wiersz) {
+                    wiersz.style.transition = "all 0.5s";
+                    wiersz.style.opacity = "0";
+                    setTimeout(() => wiersz.remove(), 500);
+                }
+            } else {
+                Swal.fire('Błąd!', 'Wystąpił problem podczas usuwania.', 'error');
             }
-        }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire('Błąd!', 'Nie udało się połączyć z serwerem.', 'error');
+        });
     }
-    return cookieValue;
-}
 </script>
 {% endblock %}

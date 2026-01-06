@@ -3,16 +3,15 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework import routers
 from . import views
 
-# Import widoków z nowej aplikacji social
-from social.views import FriendshipViewSet, FriendListView
+# Importujemy FriendshipViewSet i FriendListView bezpośrednio z .views (api/views.py)
+from .views import FriendshipViewSet, FriendListView
 
 app_name = 'api'
 
 router = routers.SimpleRouter()
 router.register('emotion-points', views.EmotionPointViewSet, basename='emotion_points')
 router.register('locations', views.LocationViewSet, basename='locations')
-
-# Rejestracja endpointu /api/friendship/
+# Rejestracja Friendship ViewSet (obsługuje POST /, PATCH /{id}/, GET /requests/, DELETE /{id}/)
 router.register('friendship', FriendshipViewSet, basename='friendship')
 
 urlpatterns = [
@@ -20,7 +19,7 @@ urlpatterns = [
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='api:schema'), name='swagger-ui'),
     path('schema/redoc/', SpectacularRedocView.as_view(url_name='api:schema'), name='redoc'),
 
-    # Rejestracja endpointu /api/friends/
+    # Endpoint dla listy znajomych (osobny widok GenericAPIView)
     path('friends/', FriendListView.as_view(), name='friends-list'),
 ]
 

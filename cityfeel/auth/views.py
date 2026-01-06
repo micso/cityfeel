@@ -100,10 +100,10 @@ class UserProfileEditView(LoginRequiredMixin, UpdateView):
         return response
 
 
-class CommunityView(ListView):
+class CommunityView(LoginRequiredMixin, ListView):
     """
     Widok społeczności / lista użytkowników.
-    Wyświetla listę użytkowników, ich statystyki, ostatnią aktywność i status relacji.
+    Wymaga zalogowania (LoginRequiredMixin).
     """
     model = CFUser
     template_name = 'auth/community.html'
@@ -120,7 +120,6 @@ class CommunityView(ListView):
             queryset = queryset.filter(username__icontains=query)
 
         # 2. Optymalizacja zapytania o ostatnie oceny (publiczne)
-        # Pobieramy oceny publiczne, posortowane od najnowszych, wraz z lokalizacją
         recent_emotions_qs = EmotionPoint.objects.filter(
             privacy_status='public'
         ).select_related('location').order_by('-created_at')
@@ -159,7 +158,7 @@ class CommunityView(ListView):
                 other_id = f.target_id if f.creator_id == self.request.user.id else f.creator_id
                 friendship_map[other_id] = f
 
-            # Przypisz obiekt relacji do użytkownika w liście (tylko na potrzeby wyświetlania)
+            # Przypisz obiekt relacji do użytkownika w liście
             for u in page_users:
                 u.friendship_status = friendship_map.get(u.id)
 

@@ -157,7 +157,8 @@
 
 <script>
 async function sendFriendRequest(targetId, btnElement) {
-    const url = '/api/friendship/';
+    // Poprawa: użycie dynamicznego tagu URL
+    const url = "{% url 'api:friendship-list' %}";
     const csrfToken = getCookie('csrftoken');
 
     try {
