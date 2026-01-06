@@ -1,13 +1,13 @@
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
-from django.views.generic import CreateView, DetailView, UpdateView, ListView
+from django.views.generic import CreateView, DetailView, UpdateView, ListView, TemplateView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.db.models import Count, Q, Prefetch
 
 from .forms import UserRegistrationForm, UserProfileEditForm
-from .models import CFUser
+from .models import CFUser, Friendship
 from emotions.models import EmotionPoint
 
 
@@ -101,7 +101,7 @@ class UserProfileEditView(LoginRequiredMixin, UpdateView):
 
 class CommunityView(LoginRequiredMixin, ListView):
     """
-    Widok społeczności - lista użytkowników z ich statystykami.
+    Widok społeczności - lista użytkowników z ich statystykami i statusem znajomości.
     Wyświetla tabelaryczny układ: użytkownik po lewej, szczegóły po prawej.
     """
     model = CFUser
@@ -110,13 +110,15 @@ class CommunityView(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
+        current_user = self.request.user
+
         # Pobieramy tylko publiczne emocje do wyświetlenia w "ostatnich aktywnościach"
         public_emotions_qs = EmotionPoint.objects.filter(
             privacy_status='public'
         ).select_related('location').order_by('-created_at')
 
-        # Główne zapytanie o użytkowników
-        queryset = CFUser.objects.annotate(
+        # Wykluczamy zalogowanego użytkownika z listy
+        queryset = CFUser.objects.exclude(id=current_user.id).annotate(
             # Liczymy wszystkie emocje
             emotions_count=Count('emotion_points')
         ).prefetch_related(
@@ -130,3 +132,84 @@ class CommunityView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(username__icontains=search_query)
 
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        users_list = context['users_list']
+        current_user = self.request.user
+
+        # Pobierz wszystkie relacje, gdzie userem jest current_user
+        # Tworzymy mapę {other_user_id: friendship_object}
+        friendships_map = {}
+
+        # Pobierz relacje gdzie current_user jest senderem lub receiverem
+        friendships = Friendship.objects.filter(
+            Q(user=current_user) | Q(friend=current_user)
+        )
+
+        for f in friendships:
+            if f.user == current_user:
+                other_id = f.friend.id
+                direction = 'sent'  # current_user wysłał zaproszenie
+            else:
+                other_id = f.user.id
+                direction = 'received'  # current_user otrzymał zaproszenie
+
+            friendships_map[other_id] = {
+                'obj': f,
+                'status': f.status,
+                'direction': direction,
+                'id': f.id,
+                'created_at': f.created_at
+            }
+
+        # Wstrzyknij status znajomości do obiektów użytkowników na liście
+        for user in users_list:
+            if user.id in friendships_map:
+                data = friendships_map[user.id]
+                user.friendship_status = data['status']  # 'pending' or 'accepted'
+                user.friendship_direction = data['direction']  # 'sent' or 'received'
+                user.friendship_id = data['id']
+                user.friendship_created_at = data['created_at']
+            else:
+                user.friendship_status = None
+
+        return context
+
+
+class MyFriendsView(LoginRequiredMixin, TemplateView):
+    """
+    Widok 'Moi znajomi' - wyświetla oczekujące zaproszenia i listę znajomych.
+    """
+    template_name = 'auth/my_friends.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        # 1. Oczekujące zaproszenia (Otrzymane) - gdzie current user jest 'friend' i status 'pending'
+        pending_requests = Friendship.objects.filter(
+            friend=user,
+            status=Friendship.PENDING
+        ).select_related('user').order_by('-created_at')
+
+        context['pending_requests'] = pending_requests
+
+        # 2. Lista znajomych (Zaakceptowane)
+        accepted_friendships = Friendship.objects.filter(
+            (Q(user=user) | Q(friend=user)) & Q(status=Friendship.ACCEPTED)
+        ).select_related('user', 'friend').order_by('created_at')
+
+        friends_list = []
+        for f in accepted_friendships:
+            # Ustal, kto jest tym 'drugim'
+            friend_user = f.friend if f.user == user else f.user
+
+            # Dodajmy ID relacji, żeby można było ją usunąć
+            friend_user.friendship_id = f.id
+            friend_user.friendship_since = f.created_at
+            friends_list.append(friend_user)
+
+        context['friends_list'] = friends_list
+
+        return context

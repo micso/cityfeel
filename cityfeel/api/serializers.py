@@ -3,9 +3,11 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
 from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
+from django.db.models import Q
 
 from emotions.models import EmotionPoint
 from map.models import Location
+from auth.models import Friendship, CFUser
 
 
 @extend_schema_field({
@@ -38,6 +40,7 @@ class PointField(serializers.Field):
 
     Konwertuje PostGIS Point na format {latitude, longitude} i odwrotnie.
     """
+
     def to_representation(self, value):
         """Konwertuje PostGIS Point na dict {latitude, longitude}."""
         if value is None:
@@ -131,8 +134,8 @@ class LocationListSerializer(serializers.ModelSerializer):
         'format': 'float',
         'nullable': True,
         'description': 'Średnia wartość emocjonalna (1-5) dla tej lokalizacji. '
-                      'Liczy ze wszystkich emotion-points (publicznych i prywatnych). '
-                      'Null jeśli lokalizacja nie ma żadnych emotion-points.',
+                       'Liczy ze wszystkich emotion-points (publicznych i prywatnych). '
+                       'Null jeśli lokalizacja nie ma żadnych emotion-points.',
         'example': 4.2
     })
     def get_avg_emotional_value(self, obj):
@@ -254,3 +257,68 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             )
 
         return emotion_point
+
+
+class FriendshipSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Friendship (zaproszenia do znajomych).
+    """
+    friend_id = serializers.PrimaryKeyRelatedField(
+        source='friend',
+        queryset=CFUser.objects.all(),
+        write_only=True
+    )
+    user = serializers.StringRelatedField(read_only=True)
+    friend = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Friendship
+        fields = ['id', 'user', 'friend', 'friend_id', 'status', 'created_at']
+        # Usunąłem 'status' z read_only_fields, aby umożliwić jego edycję (akceptację)
+        read_only_fields = ['id', 'user', 'friend', 'created_at']
+
+    def validate(self, attrs):
+        """
+        Walidacja:
+        1. Nie można zaprosić samego siebie.
+        2. Nie można zaprosić jeśli relacja już istnieje (w dowolną stronę).
+        """
+        request = self.context['request']
+
+        # Walidacja przy tworzeniu (POST) - friend_id jest wymagane
+        if self.instance is None:
+            friend = attrs['friend']
+            user = request.user
+
+            if user == friend:
+                raise serializers.ValidationError("Nie możesz wysłać zaproszenia do samego siebie.")
+
+            # Sprawdź czy relacja już istnieje (w dowolnym kierunku)
+            # (A->B) lub (B->A)
+            existing = Friendship.objects.filter(
+                (Q(user=user) & Q(friend=friend)) |
+                (Q(user=friend) & Q(friend=user))
+            ).exists()
+
+            if existing:
+                raise serializers.ValidationError(
+                    "Relacja z tym użytkownikiem już istnieje (oczekująca lub zaakceptowana).")
+
+        return attrs
+
+    def create(self, validated_data):
+        # Ustaw zalogowanego użytkownika jako wysyłającego
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class FriendUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer do wyświetlania użytkownika na liście znajomych.
+    """
+    friendship_id = serializers.IntegerField(read_only=True)
+    friendship_since = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = CFUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'avatar', 'friendship_id', 'friendship_since']
