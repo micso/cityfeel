@@ -47,7 +47,6 @@ INSTALLED_APPS = [
     'auth.apps.AuthConfig',
     'map.apps.MapConfig',
     'emotions.apps.EmotionsConfig',
-    'social',
     'api.apps.ApiConfig',
 ]
 
