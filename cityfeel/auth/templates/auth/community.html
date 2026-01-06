@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Społeczność - CityFeel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <h2 class="text-primary mb-0">Społeczność CityFeel</h2>
+      
+      <form method="get" class="d-flex" role="search">
+        <input class="form-control me-2" type="search" name="q" 
+               placeholder="Szukaj użytkownika..." 
+               value="{{ search_query }}" 
+               aria-label="Szukaj">
+        <button class="btn btn-outline-primary" type="submit">Szukaj</button>
+        {% if search_query %}
+          <a href="{% url 'cf_auth:community' %}" class="btn btn-link text-decoration-none">Wyczyść</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="d-flex flex-column gap-3">
+      {% for community_user in users %}
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <div class="row g-0">
+              
+              <div class="col-md-4 border-end bg-light p-3 d-flex flex-column justify-content-center align-items-center text-center">
+                <div class="mb-2">
+                  {% if community_user.avatar %}
+                    <img src="{{ community_user.avatar.url }}" 
+                         class="rounded-circle border border-2 border-white shadow-sm"
+                         style="width: 80px; height: 80px; object-fit: cover;"
+                         alt="{{ community_user.username }}">
+                  {% else %}
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-sm mx-auto"
+                         style="width: 80px; height: 80px; font-size: 2rem;">
+                      {{ community_user.username|slice:":1"|upper }}
+                    </div>
+                  {% endif %}
+                </div>
+                
+                <h5 class="mb-1 text-break">{{ community_user.username }}</h5>
+                <p class="text-muted small mb-2">
+                  Dołączył: {{ community_user.date_joined|date:"d.m.Y" }}
+                </p>
+                
+                <a href="{% url 'cf_auth:profile' user_id=community_user.id %}" class="btn btn-sm btn-primary w-75">
+                  Zobacz profil
+                </a>
+              </div>
+
+              <div class="col-md-8 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                  <span class="text-muted fw-bold text-uppercase small">Statystyki</span>
+                  <span class="badge bg-secondary rounded-pill">
+                    Ocenionych miejsc: {{ community_user.ratings_count }}
+                  </span>
+                </div>
+
+                <div class="recent-activity">
+                  <span class="text-muted fw-bold text-uppercase small d-block mb-2">Ostatnia aktywność:</span>
+                  
+                  {% if community_user.public_ratings %}
+                    <div class="list-group list-group-flush">
+                      {% for rating in community_user.public_ratings|slice:":3" %}
+                        <div class="list-group-item px-0 py-2 border-0 d-flex justify-content-between align-items-center">
+                          <div class="text-truncate me-2">
+                            <a href="{% url 'map:location_detail' pk=rating.location.id %}" class="text-decoration-none text-dark fw-medium">
+                              {{ rating.location.name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ rating.created_at|timesince }} temu</small>
+                          </div>
+                          
+                          <div class="d-flex align-items-center">
+                            <span class="badge {% if rating.emotional_value >= 4 %}bg-success{% elif rating.emotional_value >= 3 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                              {{ rating.emotional_value }}/5
+                            </span>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <p class="text-muted small fst-italic mt-2">Brak publicznej aktywności w ostatnim czasie.</p>
+                  {% endif %}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="alert alert-info text-center">
+          Nie znaleziono użytkowników spełniających kryteria wyszukiwania.
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+      <nav aria-label="Nawigacja strony" class="mt-4">
+        <ul class="pagination justify-content-center">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">&laquo; Poprzednia</a>
+            </li>
+          {% endif %}
+          
+          <li class="page-item disabled">
+            <span class="page-link">Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+          </li>
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Następna &raquo;</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

@@ -1,11 +1,12 @@
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
-from django.views.generic import CreateView, DetailView, UpdateView
+from django.views.generic import CreateView, DetailView, UpdateView, ListView
 from django.urls import reverse_lazy
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 
+from emotions.models import EmotionPoint
 from .forms import UserRegistrationForm, UserProfileEditForm
 from .models import CFUser
 
@@ -96,3 +97,45 @@ class UserProfileEditView(LoginRequiredMixin, UpdateView):
             'Twój profil został zaktualizowany.'
         )
         return response
+
+
+class CommunityView(ListView):
+    """
+    Widok społeczności / lista użytkowników.
+    Wyświetla listę użytkowników, ich statystyki i ostatnią aktywność.
+    """
+    model = CFUser
+    template_name = 'auth/community.html'
+    context_object_name = 'users'
+    paginate_by = 10  # Paginacja co 10 użytkowników
+
+    def get_queryset(self):
+        # Pobieramy tylko aktywnych użytkowników
+        queryset = CFUser.objects.filter(is_active=True)
+
+        # 1. Wyszukiwanie po username (jeśli podano parametr 'q')
+        query = self.request.GET.get('q')
+        if query:
+            queryset = queryset.filter(username__icontains=query)
+
+        # 2. Optymalizacja zapytania o ostatnie oceny (publiczne)
+        # Pobieramy oceny publiczne, posortowane od najnowszych, wraz z lokalizacją
+        recent_emotions_qs = EmotionPoint.objects.filter(
+            privacy_status='public'
+        ).select_related('location').order_by('-created_at')
+
+        # 3. Annotacja (liczba ocen) i Prefetch (ostatnie oceny)
+        # annotate: dodaje pole 'ratings_count'
+        # prefetch_related: pobiera powiązane oceny do atrybutu 'public_ratings'
+        queryset = queryset.annotate(
+            ratings_count=Count('emotion_points')
+        ).prefetch_related(
+            Prefetch('emotion_points', queryset=recent_emotions_qs, to_attr='public_ratings')
+        ).order_by('-ratings_count')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        return context
