@@ -116,27 +116,25 @@ class Comment(models.Model):
         return f"Komentarz użytkownika {self.user} do punktu {self.emotion_point_id}"
 
 
-# --- WAŻNE: Funkcja walidująca musi być tutaj (bez wcięć, przy lewej krawędzi) ---
 def validate_image_size(image):
     file_size = image.size
     limit_mb = 5
     if file_size > limit_mb * 1024 * 1024:
         raise ValidationError(f"Maksymalny rozmiar pliku to {limit_mb}MB")
 
-
 class Photo(models.Model):
-    emotion_point = models.ForeignKey(
-        EmotionPoint, 
+    location = models.ForeignKey(
+        Location, 
         on_delete=models.CASCADE, 
-        related_name='photos'
+        related_name='photos',
+        help_text="Lokalizacja, której dotyczy zdjęcie"
     )
-    # Django automatycznie obsłuży "photo_url" poprzez atrybut .url na tym polu
     image = models.ImageField(
-        upload_to='emotion_photos/%Y/%m/%d/',
+        upload_to='location_photos/%Y/%m/%d/', 
         validators=[validate_image_size]
     )
     caption = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Zdjęcie do punktu {self.emotion_point.id}"
+        return f"Zdjęcie do lokalizacji {self.location.name}"
