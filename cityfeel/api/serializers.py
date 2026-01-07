@@ -37,7 +37,6 @@ from auth.models import Friendship, CFUser
 class PointField(serializers.Field):
     """
     Custom serializer field dla django.contrib.gis.db.models.fields.PointField.
-
     Konwertuje PostGIS Point na format {latitude, longitude} i odwrotnie.
     """
 
@@ -121,12 +120,10 @@ class LocationListSerializer(serializers.ModelSerializer):
     avg_emotional_value = serializers.SerializerMethodField()
     emotion_points_count = serializers.IntegerField(read_only=True)
     latest_comment = serializers.SerializerMethodField()
-    # 1. Dodajemy definicję pola
     comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Location
-        # 2. UWAGA: Pamiętaj o dodaniu 'comments_count' do listy fields!
         fields = [
             'id', 'name', 'coordinates',
             'avg_emotional_value', 'emotion_points_count',
@@ -134,7 +131,12 @@ class LocationListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    @extend_schema_field({'type': 'number', 'nullable': True})
+    @extend_schema_field({
+        'type': 'number',
+        'nullable': True,
+        'description': 'Średnia wartość emocjonalna (1-5) ze wszystkich ocen.',
+        'example': 4.2
+    })
     def get_avg_emotional_value(self, obj):
         return getattr(obj, 'avg_emotional_value', None)
 
@@ -152,14 +154,16 @@ class LocationListSerializer(serializers.ModelSerializer):
     @extend_schema_field({
         'type': 'object',
         'nullable': True,
-        'description': 'Średnia wartość emocjonalna (1-5) dla tej lokalizacji. '
-                       'Liczy ze wszystkich emotion-points (publicznych i prywatnych). '
-                       'Null jeśli lokalizacja nie ma żadnych emotion-points.',
-        'example': 4.2
+        'description': 'Ostatni publiczny komentarz dodany w tej lokalizacji.',
         'properties': {
             'username': {'type': 'string'},
             'content': {'type': 'string'},
             'emotional_value': {'type': 'integer'}
+        },
+        'example': {
+            'username': 'JanKowalski',
+            'content': 'Bardzo ładne miejsce, polecam!',
+            'emotional_value': 5
         }
     })
     def get_latest_comment(self, obj):
@@ -185,10 +189,12 @@ class LocationListSerializer(serializers.ModelSerializer):
                     'emotional_value': comment.emotion_point.emotional_value
                 }
         except Exception as e:
-            print(f"⚠️ BŁĄD w get_latest_comment dla ID {obj.id}: {e}")
+            # W produkcji użyj loggera zamiast print
+            # print(f"⚠️ BŁĄD w get_latest_comment dla ID {obj.id}: {e}")
             return None
 
         return None
+
 
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
@@ -223,13 +229,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Tworzy lub aktualizuje EmotionPoint z proximity matching dla Location.
-
-        Logika:
-        1. Wyciągnij nested location data z validated_data
-        2. Wyciągnij coordinates (PostGIS Point) i name z location data
-        3. Użyj proximity matching aby znaleźć lub utworzyć Location
-        4. Sprawdź czy użytkownik ma już EmotionPoint dla tej Location
-        5. Jeśli tak - zaktualizuj, jeśli nie - utwórz nowy
         """
         # Wyciągnij nested location data
         location_data = validated_data.pop('location')
@@ -250,7 +249,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         proximity_radius_degrees = proximity_radius_meters / 111320.0
 
         # Proximity matching: znajdź najbliższą Location w promieniu
-        # Używamy dwithin z wartością w stopniach dla SRID 4326
         nearby_location = (
             Location.objects
             .filter(coordinates__dwithin=(point, proximity_radius_degrees))
@@ -264,7 +262,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             location = nearby_location
         else:
             # Utwórz nową lokalizację
-            # Użyj nazwy podanej przez użytkownika lub wygeneruj automatycznie
             if custom_location_name:
                 location_name = custom_location_name
             else:
@@ -317,7 +314,6 @@ class FriendshipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Friendship
         fields = ['id', 'user', 'friend', 'friend_id', 'status', 'created_at']
-        # Usunąłem 'status' z read_only_fields, aby umożliwić jego edycję (akceptację)
         read_only_fields = ['id', 'user', 'friend', 'created_at']
 
     def validate(self, attrs):
@@ -337,7 +333,6 @@ class FriendshipSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Nie możesz wysłać zaproszenia do samego siebie.")
 
             # Sprawdź czy relacja już istnieje (w dowolnym kierunku)
-            # (A->B) lub (B->A)
             existing = Friendship.objects.filter(
                 (Q(user=user) & Q(friend=friend)) |
                 (Q(user=friend) & Q(friend=user))
