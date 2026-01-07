@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EmotionPoint
+from .models import EmotionPoint, Comment
 
 
 @admin.register(EmotionPoint)
@@ -28,3 +28,18 @@ class EmotionPointAdmin(admin.ModelAdmin):
         """Optimize queries with select_related."""
         qs = super().get_queryset(request)
         return qs.select_related('user', 'location')
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    """Admin interface for Comment."""
+    list_display = ['user', 'emotion_point', 'created_at', 'short_content']
+    list_filter = ['created_at']
+    search_fields = ['user__username', 'content']
+    readonly_fields = ['created_at']
+
+    def short_content(self, obj):
+        """Wyświetla skrót komentarza na liście."""
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+
+    short_content.short_description = "Treść"
