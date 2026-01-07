@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="container my-4">
-  <!-- Breadcrumb -->
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="{% url 'map:emotion_map' %}">Mapa</a></li>
@@ -12,7 +11,6 @@
     </ol>
   </nav>
 
-  <!-- Header -->
   <div class="row mb-4">
     <div class="col-md-8">
       <h1 class="mb-2">{{ location.name }} - !STRONA NIE SKONCZONA!</h1>
@@ -20,14 +18,19 @@
     </div>
     <div class="col-md-4 text-end">
       {% if user_emotion_point %}
-        <span class="badge bg-success">Już oceniłeś</span>
+        <div class="d-flex align-items-center justify-content-end gap-2">
+            <span class="badge bg-success">Już oceniłeś</span>
+            <form action="{% url 'emotions:delete' user_emotion_point.pk %}" method="post" onsubmit="return confirm('Usunąć twoją ocenę?');" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">Usuń</button>
+            </form>
+        </div>
       {% else %}
         <a href="#" class="btn btn-primary">Dodaj ocenę</a>
       {% endif %}
     </div>
   </div>
 
-  <!-- Statistics -->
   <div class="row mb-4">
     <div class="col-md-6">
       <div class="card shadow-sm">
@@ -65,14 +68,12 @@
     </div>
   </div>
 
-  <!-- Mini Map -->
   <div class="card shadow-sm mb-4">
     <div class="card-body p-0">
       <div id="detail-map" style="height: 300px;"></div>
     </div>
   </div>
 
-  <!-- Public Emotion Points -->
   <h3 class="mb-3">Publiczne oceny</h3>
   {% for point in public_points %}
     <div class="card shadow-sm mb-3">
@@ -80,7 +81,18 @@
         <div class="d-flex justify-content-between">
           <div>
             <h6>{{ point.user.username }}</h6>
-            <p class="text-muted small">{{ point.created_at|date:"d.m.Y H:i" }}</p>
+            <div class="d-flex align-items-center gap-2">
+                <p class="text-muted small mb-0">{{ point.created_at|date:"d.m.Y H:i" }}</p>
+
+                {% if request.user == point.user %}
+                    <form action="{% url 'emotions:delete' point.pk %}" method="post" onsubmit="return confirm('Czy na pewno chcesz usunąć ocenę?');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0" style="text-decoration: none; font-size: 0.875em;">
+                            (Usuń)
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
           </div>
           <span class="badge bg-primary">{{ point.emotional_value }}/5</span>
         </div>

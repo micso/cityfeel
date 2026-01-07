@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q, F
 
 
 def user_avatar_upload_path(instance, filename):
@@ -41,3 +42,60 @@ class CFUser(AbstractUser):
         if self.avatar:
             return self.avatar.url
         return None
+
+
+class Friendship(models.Model):
+    """
+    Model reprezentujący relację znajomości między użytkownikami.
+    Zadanie #44
+    """
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+
+    STATUS_CHOICES = [
+        (PENDING, 'Oczekujące'),
+        (ACCEPTED, 'Zaakceptowane'),
+    ]
+
+    user = models.ForeignKey(
+        CFUser,
+        on_delete=models.CASCADE,
+        related_name='friendships_initiated',
+        help_text="Użytkownik wysyłający zaproszenie"
+    )
+    friend = models.ForeignKey(
+        CFUser,
+        on_delete=models.CASCADE,
+        related_name='friendships_received',
+        help_text="Użytkownik otrzymujący zaproszenie"
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=PENDING,
+        help_text="Status relacji (pending/accepted)"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Data utworzenia relacji"
+    )
+
+    class Meta:
+        verbose_name = "Znajomość"
+        verbose_name_plural = "Znajomości"
+        db_table = "auth_friendship"
+        constraints = [
+            # UNIQUE(user_id, friend_id)
+            models.UniqueConstraint(
+                fields=['user', 'friend'],
+                name='unique_friendship'
+            ),
+            # CHECK(user_id != friend_id)
+            models.CheckConstraint(
+                condition=~Q(user=F('friend')),  # ZMIANA: check -> condition
+                name='users_cannot_be_friends_with_themselves'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user} -> {self.friend} ({self.status})"

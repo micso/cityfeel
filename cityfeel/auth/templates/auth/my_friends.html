@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Moi znajomi - CityFeel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    
+    <h2 class="text-primary mb-4">Moi znajomi</h2>
+
+    {% if pending_requests %}
+      <div class="card shadow-sm mb-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-10 text-warning-emphasis fw-bold">
+          Oczekujące zaproszenia ({{ pending_requests.count }})
+        </div>
+        <div class="list-group list-group-flush">
+          {% for req in pending_requests %}
+            <div class="list-group-item p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                  <div class="flex-shrink-0 me-3">
+                    {% if req.user.avatar %}
+                      <img src="{{ req.user.avatar.url }}" alt="{{ req.user.username }}" 
+                           class="rounded-circle border" style="width: 50px; height: 50px; object-fit: cover;">
+                    {% else %}
+                      <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                           style="width: 50px; height: 50px; font-size: 1.2rem;">
+                        {{ req.user.username|slice:":1"|upper }}
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <h5 class="mb-0">
+                      <a href="{% url 'cf_auth:profile' user_id=req.user.id %}" class="text-decoration-none text-dark">
+                        {{ req.user.username }}
+                      </a>
+                    </h5>
+                    <small class="text-muted">Wysłano: {{ req.created_at|date:"d.m.Y" }}</small>
+                  </div>
+                </div>
+                
+                <div class="friendship-actions">
+                  <div class="btn-group">
+                    <button class="btn btn-success btn-accept-request" data-friendship-id="{{ req.id }}">
+                      <i class="bi bi-check-lg"></i> Akceptuj
+                    </button>
+                    <button class="btn btn-outline-danger btn-reject-request" data-friendship-id="{{ req.id }}">
+                      <i class="bi bi-x-lg"></i> Odrzuć
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-light fw-bold">
+        Lista znajomych ({{ friends_list|length }})
+      </div>
+      <div class="list-group list-group-flush">
+        {% for friend in friends_list %}
+          <div class="list-group-item p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 me-3">
+                  {% if friend.avatar %}
+                    <img src="{{ friend.avatar.url }}" alt="{{ friend.username }}" 
+                         class="rounded-circle border" style="width: 50px; height: 50px; object-fit: cover;">
+                  {% else %}
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                         style="width: 50px; height: 50px; font-size: 1.2rem;">
+                      {{ friend.username|slice:":1"|upper }}
+                    </div>
+                  {% endif %}
+                </div>
+                <div>
+                  <h5 class="mb-0">
+                    <a href="{% url 'cf_auth:profile' user_id=friend.id %}" class="text-decoration-none text-dark">
+                      {{ friend.username }}
+                    </a>
+                  </h5>
+                  <small class="text-muted">Znajomi od: {{ friend.friendship_since|date:"d.m.Y" }}</small>
+                </div>
+              </div>
+              
+              <div class="friendship-actions">
+                <button class="btn btn-sm btn-outline-danger btn-remove-friend"
+                        data-friendship-id="{{ friend.friendship_id }}"
+                        data-friend-name="{{ friend.username }}">
+                  Usuń
+                </button>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="p-5 text-center text-muted">
+            <p class="mb-2">Nie masz jeszcze żadnych znajomych.</p>
+            <a href="{% url 'cf_auth:community' %}" class="btn btn-primary btn-sm">Znajdź kogoś w społeczności</a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal fade" id="deleteFriendModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title">Usunąć znajomego?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Czy na pewno chcesz usunąć użytkownika <strong id="deleteFriendName"></strong> z listy znajomych?
+        <div class="text-muted small mt-2">Tej operacji nie można cofnąć.</div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteFriendBtn">
+          Usuń znajomego
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100">
+  <div id="apiToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="apiToastBody">
+        </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // === CONFIG ===
+  const FRIENDSHIP_API_URL = "{% url 'api:friendship-list' %}";
+
+  // --- Helpers ---
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrfToken = getCookie('csrftoken');
+
+  function showToast(message, type = 'success') {
+    const toastEl = document.getElementById('apiToast');
+    const toastBody = document.getElementById('apiToastBody');
+    toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+    toastBody.textContent = message;
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+  }
+
+  // --- Logic for Delete Modal ---
+  const deleteModalEl = document.getElementById('deleteFriendModal');
+  const deleteModal = new bootstrap.Modal(deleteModalEl);
+  const confirmDeleteBtn = document.getElementById('confirmDeleteFriendBtn');
+  const deleteFriendNameEl = document.getElementById('deleteFriendName');
+  let friendshipIdToDelete = null;
+
+  // Open Modal
+  document.querySelectorAll('.btn-remove-friend').forEach(btn => {
+    btn.addEventListener('click', function() {
+      friendshipIdToDelete = this.dataset.friendshipId;
+      deleteFriendNameEl.textContent = this.dataset.friendName;
+      deleteModal.show();
+    });
+  });
+
+  // Confirm Delete
+  confirmDeleteBtn.addEventListener('click', async function() {
+    if (!friendshipIdToDelete) return;
+
+    // Loading state
+    const originalText = this.textContent;
+    this.textContent = 'Usuwanie...';
+    this.disabled = true;
+
+    try {
+      const url = `${FRIENDSHIP_API_URL}${friendshipIdToDelete}/`;
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': csrfToken }
+      });
+
+      if (response.ok || response.status === 204) {
+        showToast('Usunięto ze znajomych', 'info');
+        deleteModal.hide();
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Wystąpił błąd podczas usuwania', 'danger');
+      }
+    } catch (e) {
+      showToast('Błąd połączenia', 'danger');
+    } finally {
+      this.textContent = originalText;
+      this.disabled = false;
+    }
+  });
+
+  // --- Logic for Accepting Requests ---
+  document.querySelectorAll('.btn-accept-request').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const friendshipId = this.dataset.friendshipId;
+      this.disabled = true;
+      try {
+        const url = `${FRIENDSHIP_API_URL}${friendshipId}/`;
+
+        const response = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ status: 'accepted' })
+        });
+        if (response.ok) {
+          showToast('Zaakceptowano zaproszenie');
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          showToast('Wystąpił błąd', 'danger');
+          this.disabled = false;
+        }
+      } catch (e) {
+        showToast('Błąd połączenia', 'danger');
+        this.disabled = false;
+      }
+    });
+  });
+
+  // --- Logic for Rejecting Requests (Direct Delete) ---
+  document.querySelectorAll('.btn-reject-request').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const friendshipId = this.dataset.friendshipId;
+      this.disabled = true;
+      try {
+        const url = `${FRIENDSHIP_API_URL}${friendshipId}/`;
+
+        const response = await fetch(url, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': csrfToken }
+        });
+        if (response.ok || response.status === 204) {
+          showToast('Odrzucono zaproszenie', 'info');
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          showToast('Wystąpił błąd', 'danger');
+          this.disabled = false;
+        }
+      } catch (e) {
+        showToast('Błąd połączenia', 'danger');
+        this.disabled = false;
+      }
+    });
+  });
+
+});
+</script>
+{% endblock %}

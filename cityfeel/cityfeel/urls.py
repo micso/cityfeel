@@ -18,15 +18,16 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
+from map.views import EmotionMapView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('auth.urls')),
     path('map/', include('map.urls')),
+    path('emotions/', include('emotions.urls')),
     path('api/', include('api.urls')),
-    path('', RedirectView.as_view(pattern_name='map:emotion_map'), name='home'),
+    path('', EmotionMapView.as_view(), name='home'),
 ]
 
 # Serve media files during development

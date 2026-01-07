@@ -29,8 +29,20 @@ class EmotionPointAdmin(admin.ModelAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('user', 'emotion_point', 'created_at')
+    """Admin interface for Comment."""
+    # Bierzemy wersję z mastera, bo jest bogatsza (ma short_content i filtry)
+    list_display = ['user', 'emotion_point', 'created_at', 'short_content']
+    list_filter = ['created_at']
+    search_fields = ['user__username', 'content']
+    readonly_fields = ['created_at']
+
+    def short_content(self, obj):
+        """Wyświetla skrót komentarza na liście."""
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+
+    short_content.short_description = "Treść"
 
 @admin.register(Photo)
 class PhotoAdmin(admin.ModelAdmin):
-    list_display = ('emotion_point', 'created_at', 'caption')
+    # Ustawiamy 'location', bo zgodnie z planem zmieniamy model w następnym kroku
+    list_display = ('location', 'created_at', 'caption')

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CFUser
+from .models import CFUser, Friendship
 
 
 @admin.register(CFUser)
@@ -30,3 +30,12 @@ class CFUserAdmin(UserAdmin):
 
     has_avatar.boolean = True
     has_avatar.short_description = 'Avatar'
+
+
+@admin.register(Friendship)
+class FriendshipAdmin(admin.ModelAdmin):
+    """Admin interface for Friendship model."""
+    list_display = ['user', 'friend', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['user__username', 'friend__username']
+    autocomplete_fields = ['user', 'friend']
