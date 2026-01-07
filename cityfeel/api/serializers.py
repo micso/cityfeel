@@ -4,7 +4,7 @@ from django.contrib.gis.db.models.functions import Distance
 from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
 
-from emotions.models import EmotionPoint
+from emotions.models import EmotionPoint, Comment
 from map.models import Location
 
 
@@ -120,11 +120,14 @@ class LocationListSerializer(serializers.ModelSerializer):
     coordinates = PointField()
     avg_emotional_value = serializers.SerializerMethodField()
     emotion_points_count = serializers.IntegerField(read_only=True)
+    latest_comment = serializers.SerializerMethodField()
 
     class Meta:
         model = Location
-        fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
-        read_only_fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
+        fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count', 'latest_comment']
+
+        read_only_fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count',
+                            'latest_comment']
 
     @extend_schema_field({
         'type': 'number',
@@ -143,6 +146,42 @@ class LocationListSerializer(serializers.ModelSerializer):
         # Wartość będzie dostępna przez annotate() w viewset queryset
         return getattr(obj, 'avg_emotional_value', None)
 
+    @extend_schema_field({
+        'type': 'object',
+        'nullable': True,
+        'properties': {
+            'username': {'type': 'string'},
+            'content': {'type': 'string'},
+            'emotional_value': {'type': 'integer'}
+        }
+    })
+    def get_latest_comment(self, obj):
+        try:
+            comment = (
+                Comment.objects
+                .filter(
+                    emotion_point__location=obj,
+                    emotion_point__privacy_status='public'
+                )
+                .exclude(content__isnull=True)
+                .exclude(content__exact='')
+                .select_related('user', 'emotion_point')
+                .order_by('-created_at')
+                .first()
+            )
+
+            if comment:
+                content = comment.content
+                return {
+                    'username': comment.user.username,
+                    'content': content[:100] + '...' if len(content) > 100 else content,
+                    'emotional_value': comment.emotion_point.emotional_value
+                }
+        except Exception as e:
+            print(f"⚠️ BŁĄD w get_latest_comment dla ID {obj.id}: {e}")
+            return None
+
+        return None
 
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
