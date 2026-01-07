@@ -366,7 +366,7 @@
       // Wyciągnij nazwę lokalizacji z popup HTML (parsing)
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = popupContent;
-      const locationName = tempDiv.querySelector('h5').textContent;
+      const locationName = tempDiv.querySelector('h6').textContent;
 
       proximityText.textContent =
         `Twoja ocena zostanie przypisana do: "${locationName}" (${Math.round(minDistance)}m od kliknięcia)`;
