@@ -43,11 +43,17 @@
             <li class="nav-item">
               <a class="nav-link text-muted" href="#" onclick="return false;" title="Wkrótce dostępne">Dodaj opinię</a>
             </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'api:redoc' %}" target="_blank">API</a>
+            </li>
+
             <li class="nav-item">
               <a class="nav-link fw-semibold text-primary" href="{% url 'cf_auth:profile' user_id=user.id %}">
                 {{ user.username }}
               </a>
             </li>
+
             <li class="nav-item">
               <form action="{% url 'cf_auth:logout' %}" method="post" class="d-inline">
                 {% csrf_token %}
@@ -55,6 +61,9 @@
               </form>
             </li>
           {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'api:redoc' %}" target="_blank">API</a>
+            </li>
             <li class="nav-item">
               <a class="nav-link" href="{% url 'cf_auth:login' %}">Logowanie</a>
             </li>
