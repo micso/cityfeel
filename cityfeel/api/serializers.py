@@ -5,7 +5,7 @@ from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Q
 
-from emotions.models import EmotionPoint
+from emotions.models import EmotionPoint, Comment
 from map.models import Location
 from auth.models import Friendship, CFUser
 
@@ -114,38 +114,81 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class LocationListSerializer(serializers.ModelSerializer):
     """
-    Serializer dla endpointu GET /api/locations/ z dodatkowym polem avg_emotional_value.
-    Używany do wyświetlania listy lokalizacji z agregowanymi danymi emocji.
-
-    avg_emotional_value liczy średnią ze WSZYSTKICH emotion-points (publicznych i prywatnych).
-    Privacy status kontroluje tylko widoczność kto jak ocenił, nie wpływa na średnią.
+    Serializer dla endpointu GET /api/locations/.
+    Rozszerzony o latest_comment i licznik komentarzy.
     """
     coordinates = PointField()
     avg_emotional_value = serializers.SerializerMethodField()
     emotion_points_count = serializers.IntegerField(read_only=True)
+    latest_comment = serializers.SerializerMethodField()
+    # 1. Dodajemy definicję pola
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Location
-        fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
-        read_only_fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count']
+        # 2. UWAGA: Pamiętaj o dodaniu 'comments_count' do listy fields!
+        fields = [
+            'id', 'name', 'coordinates',
+            'avg_emotional_value', 'emotion_points_count',
+            'latest_comment', 'comments_count'
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field({'type': 'number', 'nullable': True})
+    def get_avg_emotional_value(self, obj):
+        return getattr(obj, 'avg_emotional_value', None)
+
+    @extend_schema_field({'type': 'integer'})
+    def get_comments_count(self, obj):
+        """Liczy komentarze tylko z publicznych punktów."""
+        try:
+            return Comment.objects.filter(
+                emotion_point__location=obj,
+                emotion_point__privacy_status='public'
+            ).count()
+        except Exception:
+            return 0
 
     @extend_schema_field({
-        'type': 'number',
-        'format': 'float',
+        'type': 'object',
         'nullable': True,
         'description': 'Średnia wartość emocjonalna (1-5) dla tej lokalizacji. '
                        'Liczy ze wszystkich emotion-points (publicznych i prywatnych). '
                        'Null jeśli lokalizacja nie ma żadnych emotion-points.',
         'example': 4.2
+        'properties': {
+            'username': {'type': 'string'},
+            'content': {'type': 'string'},
+            'emotional_value': {'type': 'integer'}
+        }
     })
-    def get_avg_emotional_value(self, obj):
-        """
-        Zwraca średnią wartość emocjonalną dla tej lokalizacji.
-        Używa annotacji z queryset jeśli dostępna, inaczej None.
-        """
-        # Wartość będzie dostępna przez annotate() w viewset queryset
-        return getattr(obj, 'avg_emotional_value', None)
+    def get_latest_comment(self, obj):
+        try:
+            comment = (
+                Comment.objects
+                .filter(
+                    emotion_point__location=obj,
+                    emotion_point__privacy_status='public'
+                )
+                .exclude(content__isnull=True)
+                .exclude(content__exact='')
+                .select_related('user', 'emotion_point')
+                .order_by('-created_at')
+                .first()
+            )
 
+            if comment:
+                content = comment.content
+                return {
+                    'username': comment.user.username,
+                    'content': content[:100] + '...' if len(content) > 100 else content,
+                    'emotional_value': comment.emotion_point.emotional_value
+                }
+        except Exception as e:
+            print(f"⚠️ BŁĄD w get_latest_comment dla ID {obj.id}: {e}")
+            return None
+
+        return None
 
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)

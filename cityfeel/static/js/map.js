@@ -175,22 +175,61 @@
     return marker;
   }
 
-  // === POPUP ===
+// === POPUP ===
   function createPopupContent(location) {
-    const { name, avg_emotional_value, emotion_points_count, id } = location;
+    const { name, avg_emotional_value, emotion_points_count, comments_count, id, latest_comment } = location;
 
     const stars = getStarsHTML(avg_emotional_value);
     const detailsUrl = `/map/location/${id}/`;
 
-    return `
-      <div class="location-popup">
-        <h5 class="mb-2">${escapeHtml(name)}</h5>
-        <div class="emotion-rating mb-2">
-          ${stars}
-          <span class="ms-2 text-muted">${avg_emotional_value ? avg_emotional_value.toFixed(1) : 'Brak'}</span>
+    // 1. Budujemy teksty
+    // "Oparte na 5 ocenach" (zakładamy, że funkcja pluralize robi robotę, tak jak wcześniej)
+    const ratingText = `Oparte na ${emotion_points_count || 0} ${pluralize(emotion_points_count)}`;
+
+    // "• 2 komentarze" (prosta odmiana dla słowa komentarz)
+    let commentsText = '';
+    const count = comments_count || 0;
+    if (count === 1) commentsText = '1 komentarz';
+    else if (count > 1 && count < 5) commentsText = `${count} komentarze`;
+    else commentsText = `${count} komentarzy`;
+
+    let commentHtml = '';
+    if (latest_comment) {
+      commentHtml = `
+        <div class="mt-2 mb-2 p-2 bg-light border-start border-3 border-primary rounded-end text-start">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+                <strong>${escapeHtml(latest_comment.username)}</strong>
+                <span>${latest_comment.emotional_value}/5</span>
+            </div>
+            <p class="mb-0 small fst-italic text-dark" style="line-height: 1.2;">
+                "${escapeHtml(latest_comment.content)}"
+            </p>
         </div>
-        <p class="text-muted small mb-2">Oparte na ${emotion_points_count || 0} ${pluralize(emotion_points_count)}</p>
-        <a href="${detailsUrl}" class="btn btn-sm btn-primary w-100">Zobacz szczegóły</a>
+      `;
+    } else {
+      commentHtml = `
+        <div class="mt-2 mb-2 p-2 bg-light rounded text-center text-muted small fst-italic">
+            Brak opinii. Bądź pierwszy!
+        </div>
+      `;
+    }
+
+    return `
+      <div class="location-popup" style="min-width: 220px;">
+        <h6 class="mb-2 fw-bold">${escapeHtml(name)}</h6>
+        
+        <div class="emotion-rating mb-1">
+          ${stars}
+          <span class="ms-2 text-muted fw-bold">${avg_emotional_value ? avg_emotional_value.toFixed(1) : '-'}</span>
+        </div>
+
+        <p class="text-muted small mb-2">
+            ${ratingText} &bull; ${commentsText}
+        </p>
+        
+        ${commentHtml}
+
+        <a href="${detailsUrl}" class="btn btn-sm btn-primary w-100 mt-1">Zobacz szczegóły</a>
       </div>
     `;
   }
