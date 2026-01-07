@@ -10,7 +10,7 @@ from emotions.models import EmotionPoint
 from map.models import Location
 from auth.models import Friendship, CFUser
 from .serializers import EmotionPointSerializer, LocationListSerializer, FriendshipSerializer, FriendUserSerializer
-from .filters import LocationFilter
+from .filters import LocationFilter, EmotionPointFilter
 
 
 class EmotionPointViewSet(ModelViewSet):
@@ -22,12 +22,15 @@ class EmotionPointViewSet(ModelViewSet):
 
     Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
     lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+    Filtrowanie:
+    - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
     """
     queryset = EmotionPoint.objects.filter(privacy_status='public').order_by('-created_at')
     serializer_class = EmotionPointSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['emotional_value']
+    filterset_class = EmotionPointFilter
 
 
 class LocationViewSet(ReadOnlyModelViewSet):
