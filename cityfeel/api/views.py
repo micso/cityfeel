@@ -1,11 +1,15 @@
-from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet, GenericViewSet
+from rest_framework import mixins, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 
 from emotions.models import EmotionPoint
 from map.models import Location
-from .serializers import EmotionPointSerializer, LocationListSerializer
+from auth.models import Friendship, CFUser
+from .serializers import EmotionPointSerializer, LocationListSerializer, FriendshipSerializer, FriendUserSerializer
 from .filters import LocationFilter
 
 
@@ -58,3 +62,72 @@ class LocationViewSet(ReadOnlyModelViewSet):
             .prefetch_related('emotion_points__user')
             .order_by('-avg_emotional_value', 'name')
         )
+
+
+class FriendshipViewSet(mixins.CreateModelMixin,
+                        mixins.RetrieveModelMixin,
+                        mixins.DestroyModelMixin,
+                        mixins.UpdateModelMixin,
+                        GenericViewSet):
+    """
+    ViewSet dla systemu znajomych.
+
+    POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
+    PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
+    DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
+    GET /api/friends/ - (Action) Lista znajomych
+    GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
+    """
+    serializer_class = FriendshipSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Zwraca relacje, w których uczestniczy zalogowany użytkownik."""
+        user = self.request.user
+        return Friendship.objects.filter(Q(user=user) | Q(friend=user))
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='requests')
+    def requests_list(self, request):
+        """
+        Zwraca listę otrzymanych, oczekujących zaproszeń.
+        Endpoint: /api/friendship/requests/
+        """
+        incoming_requests = Friendship.objects.filter(
+            friend=request.user,
+            status=Friendship.PENDING
+        ).order_by('-created_at')
+
+        serializer = self.get_serializer(incoming_requests, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='friends')
+    def friends_list(self, request):
+        """
+        Zwraca listę znajomych (status ACCEPTED).
+        Zwraca dane użytkowników, a nie obiekty Friendship.
+        Endpoint: /api/friends/ (mapowane w urls.py)
+        """
+        user = request.user
+
+        # Pobierz wszystkie zaakceptowane relacje
+        friendships = Friendship.objects.filter(
+            (Q(user=user) | Q(friend=user)) & Q(status=Friendship.ACCEPTED)
+        ).select_related('user', 'friend')
+
+        friends_data = []
+        for f in friendships:
+            # Wybierz "drugą stronę" relacji
+            is_sender = f.user == user
+            friend_user = f.friend if is_sender else f.user
+
+            # Przygotuj dane do serializacji
+            # Używamy setattr, żeby przekazać dane o relacji do serializera użytkownika
+            friend_user.friendship_id = f.id
+            friend_user.friendship_since = f.created_at
+            friends_data.append(friend_user)
+
+        serializer = FriendUserSerializer(friends_data, many=True, context={'request': request})
+        return Response(serializer.data)

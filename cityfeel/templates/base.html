@@ -38,13 +38,15 @@
               <a class="nav-link" href="{% url 'cf_auth:community' %}">Społeczność</a>
             </li>
             <li class="nav-item">
+              <a class="nav-link" href="{% url 'cf_auth:my_friends' %}">Moi znajomi</a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link text-muted" href="#" onclick="return false;" title="Wkrótce dostępne">Dodaj opinię</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'cf_auth:profile' user_id=user.id %}">Moje konto</a>
-            </li>
-            <li class="nav-item">
-              <span class="nav-link">{{ user.username }}</span>
+              <a class="nav-link fw-semibold text-primary" href="{% url 'cf_auth:profile' user_id=user.id %}">
+                {{ user.username }}
+              </a>
             </li>
             <li class="nav-item">
               <form action="{% url 'cf_auth:logout' %}" method="post" class="d-inline">
