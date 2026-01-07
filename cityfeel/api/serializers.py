@@ -111,40 +111,40 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class LocationListSerializer(serializers.ModelSerializer):
     """
-    Serializer dla endpointu GET /api/locations/ z dodatkowym polem avg_emotional_value.
-    Używany do wyświetlania listy lokalizacji z agregowanymi danymi emocji.
-
-    avg_emotional_value liczy średnią ze WSZYSTKICH emotion-points (publicznych i prywatnych).
-    Privacy status kontroluje tylko widoczność kto jak ocenił, nie wpływa na średnią.
+    Serializer dla endpointu GET /api/locations/.
+    Rozszerzony o latest_comment i licznik komentarzy.
     """
     coordinates = PointField()
     avg_emotional_value = serializers.SerializerMethodField()
     emotion_points_count = serializers.IntegerField(read_only=True)
     latest_comment = serializers.SerializerMethodField()
+    # 1. Dodajemy definicję pola
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Location
-        fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count', 'latest_comment']
+        # 2. UWAGA: Pamiętaj o dodaniu 'comments_count' do listy fields!
+        fields = [
+            'id', 'name', 'coordinates',
+            'avg_emotional_value', 'emotion_points_count',
+            'latest_comment', 'comments_count'
+        ]
+        read_only_fields = fields
 
-        read_only_fields = ['id', 'name', 'coordinates', 'avg_emotional_value', 'emotion_points_count',
-                            'latest_comment']
-
-    @extend_schema_field({
-        'type': 'number',
-        'format': 'float',
-        'nullable': True,
-        'description': 'Średnia wartość emocjonalna (1-5) dla tej lokalizacji. '
-                      'Liczy ze wszystkich emotion-points (publicznych i prywatnych). '
-                      'Null jeśli lokalizacja nie ma żadnych emotion-points.',
-        'example': 4.2
-    })
+    @extend_schema_field({'type': 'number', 'nullable': True})
     def get_avg_emotional_value(self, obj):
-        """
-        Zwraca średnią wartość emocjonalną dla tej lokalizacji.
-        Używa annotacji z queryset jeśli dostępna, inaczej None.
-        """
-        # Wartość będzie dostępna przez annotate() w viewset queryset
         return getattr(obj, 'avg_emotional_value', None)
+
+    @extend_schema_field({'type': 'integer'})
+    def get_comments_count(self, obj):
+        """Liczy komentarze tylko z publicznych punktów."""
+        try:
+            return Comment.objects.filter(
+                emotion_point__location=obj,
+                emotion_point__privacy_status='public'
+            ).count()
+        except Exception:
+            return 0
 
     @extend_schema_field({
         'type': 'object',

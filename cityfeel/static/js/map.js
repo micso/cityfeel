@@ -177,16 +177,24 @@
 
 // === POPUP ===
   function createPopupContent(location) {
-    const { name, avg_emotional_value, emotion_points_count, id, latest_comment } = location;
+    const { name, avg_emotional_value, emotion_points_count, comments_count, id, latest_comment } = location;
 
     const stars = getStarsHTML(avg_emotional_value);
     const detailsUrl = `/map/location/${id}/`;
 
-    // Sekcja komentarza
-    let commentHtml = '';
+    // 1. Budujemy teksty
+    // "Oparte na 5 ocenach" (zakładamy, że funkcja pluralize robi robotę, tak jak wcześniej)
+    const ratingText = `Oparte na ${emotion_points_count || 0} ${pluralize(emotion_points_count)}`;
 
+    // "• 2 komentarze" (prosta odmiana dla słowa komentarz)
+    let commentsText = '';
+    const count = comments_count || 0;
+    if (count === 1) commentsText = '1 komentarz';
+    else if (count > 1 && count < 5) commentsText = `${count} komentarze`;
+    else commentsText = `${count} komentarzy`;
+
+    let commentHtml = '';
     if (latest_comment) {
-      // Przypadek A: Mamy komentarz - wyświetlamy go
       commentHtml = `
         <div class="mt-2 mb-2 p-2 bg-light border-start border-3 border-primary rounded-end text-start">
             <div class="d-flex justify-content-between small text-muted mb-1">
@@ -199,7 +207,6 @@
         </div>
       `;
     } else {
-      // Przypadek B: Brak komentarzy - wyświetlamy zachętę
       commentHtml = `
         <div class="mt-2 mb-2 p-2 bg-light rounded text-center text-muted small fst-italic">
             Brak opinii. Bądź pierwszy!
@@ -208,14 +215,16 @@
     }
 
     return `
-      <div class="location-popup" style="min-width: 200px;">
+      <div class="location-popup" style="min-width: 220px;">
         <h6 class="mb-2 fw-bold">${escapeHtml(name)}</h6>
-        <div class="emotion-rating mb-2">
+        
+        <div class="emotion-rating mb-1">
           ${stars}
           <span class="ms-2 text-muted fw-bold">${avg_emotional_value ? avg_emotional_value.toFixed(1) : '-'}</span>
         </div>
+
         <p class="text-muted small mb-2">
-            Oparte na ${emotion_points_count || 0} ${pluralize(emotion_points_count)}
+            ${ratingText} &bull; ${commentsText}
         </p>
         
         ${commentHtml}
