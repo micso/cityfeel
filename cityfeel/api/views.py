@@ -65,5 +65,6 @@ class LocationViewSet(ReadOnlyModelViewSet):
                 avg_emotional_value=Avg('emotion_points__emotional_value'),
                 emotion_points_count=Count('emotion_points')
             )
+            .prefetch_related('emotion_points__user')
             .order_by('-avg_emotional_value', 'name')
         )
