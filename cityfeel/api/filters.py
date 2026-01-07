@@ -1,6 +1,7 @@
 from django_filters import rest_framework as filters
 from django.contrib.gis.geos import Point, Polygon
 from map.models import Location
+from emotions.models import EmotionPoint
 
 
 class LocationFilter(filters.FilterSet):
@@ -92,3 +93,18 @@ class LocationFilter(filters.FilterSet):
 
         except (ValueError, AttributeError):
             return queryset.none()
+
+
+class EmotionPointFilter(filters.FilterSet):
+    """
+    Custom FilterSet dla EmotionPoint.
+
+    Filtry:
+    - emotional_value: filtrowanie po wielu wartościach (np. ?emotional_value=1,2,3)
+    """
+
+    emotional_value = filters.BaseInFilter(field_name='emotional_value')
+
+    class Meta:
+        model = EmotionPoint
+        fields = ['emotional_value']

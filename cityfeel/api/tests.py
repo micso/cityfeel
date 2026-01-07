@@ -912,3 +912,193 @@ class LocationAPITestCase(TestCase):
         self.assertIsNotNone(location3_data)
         self.assertGreater(location1_data['avg_emotional_value'],
                           location3_data['avg_emotional_value'])
+
+
+class EmotionPointFilterTestCase(TestCase):
+    """Testy dla filtrowania EmotionPoints po emotional_value."""
+
+    def setUp(self):
+        """Przygotowanie środowiska testowego."""
+        self.client = APIClient()
+
+        # Użytkownicy
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.user2 = User.objects.create_user(
+            username='testuser2',
+            email='test2@example.com',
+            password='testpass456'
+        )
+
+        # Lokalizacje testowe
+        self.location1 = Location.objects.create(
+            name='Test Location 1',
+            coordinates=Point(18.6466, 54.3520, srid=4326)
+        )
+        self.location2 = Location.objects.create(
+            name='Test Location 2',
+            coordinates=Point(21.0122, 52.2297, srid=4326)
+        )
+        self.location3 = Location.objects.create(
+            name='Test Location 3',
+            coordinates=Point(19.9366, 50.0614, srid=4326)
+        )
+        self.location4 = Location.objects.create(
+            name='Test Location 4',
+            coordinates=Point(17.0385, 51.1079, srid=4326)
+        )
+
+        # EmotionPoints z różnymi wartościami (wszystkie publiczne)
+        EmotionPoint.objects.create(
+            user=self.user, location=self.location1,
+            emotional_value=1, privacy_status='public'
+        )
+        EmotionPoint.objects.create(
+            user=self.user2, location=self.location1,
+            emotional_value=2, privacy_status='public'
+        )
+        EmotionPoint.objects.create(
+            user=self.user, location=self.location2,
+            emotional_value=3, privacy_status='public'
+        )
+        EmotionPoint.objects.create(
+            user=self.user2, location=self.location2,
+            emotional_value=4, privacy_status='public'
+        )
+        EmotionPoint.objects.create(
+            user=self.user, location=self.location3,
+            emotional_value=5, privacy_status='public'
+        )
+
+        # Jeden prywatny EmotionPoint (nie powinien być widoczny w listingu)
+        # Używamy user2 i location4, aby uniknąć naruszenia unique constraint
+        EmotionPoint.objects.create(
+            user=self.user2, location=self.location4,
+            emotional_value=1, privacy_status='private'
+        )
+
+        self.url = '/api/emotion-points/'
+
+    def test_filter_by_single_emotional_value(self):
+        """Test filtrowania po pojedynczej wartości ?emotional_value=3."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '3'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['emotional_value'], 3)
+
+    def test_filter_by_multiple_emotional_values(self):
+        """Test filtrowania po wielu wartościach ?emotional_value=1,2,3."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '1,2,3'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Powinno być 3 publiczne punkty (1, 2, 3)
+        # Prywatny punkt z wartością 1 nie jest uwzględniony
+        self.assertEqual(len(response.data['results']), 3)
+
+        # Sprawdź wartości
+        emotional_values = {ep['emotional_value'] for ep in response.data['results']}
+        self.assertEqual(emotional_values, {1, 2, 3})
+
+    def test_filter_by_all_emotional_values(self):
+        """Test filtrowania po wszystkich wartościach ?emotional_value=1,2,3,4,5."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '1,2,3,4,5'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Powinno być 5 publicznych punktów
+        self.assertEqual(len(response.data['results']), 5)
+
+    def test_filter_no_results(self):
+        """Test filtrowania po wartości której nie ma ?emotional_value=0."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '0'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 0)
+
+    def test_filter_multiple_values_no_results(self):
+        """Test filtrowania po wartościach których nie ma ?emotional_value=0,6,7."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '0,6,7'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 0)
+
+    def test_filter_partial_match(self):
+        """Test filtrowania gdzie tylko część wartości istnieje ?emotional_value=3,4,6."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '3,4,6'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Powinno być 2 punkty (3 i 4), wartość 6 nie istnieje
+        self.assertEqual(len(response.data['results']), 2)
+
+        emotional_values = {ep['emotional_value'] for ep in response.data['results']}
+        self.assertEqual(emotional_values, {3, 4})
+
+    def test_filter_without_parameter_returns_all(self):
+        """Test że bez parametru zwraca wszystkie publiczne EmotionPoints."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Wszystkie publiczne (5 punktów)
+        self.assertEqual(len(response.data['results']), 5)
+
+    def test_filter_only_returns_public_emotion_points(self):
+        """Test że filtrowanie zwraca tylko publiczne EmotionPoints."""
+        self.client.force_authenticate(user=self.user)
+        # Szukamy wartości 1, ale istnieją dwa punkty: publiczny (user, location1) i prywatny (user2, location4)
+        response = self.client.get(self.url, {'emotional_value': '1'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Tylko 1 publiczny punkt (prywatny nie jest zwracany w listingu)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['privacy_status'], 'public')
+
+    def test_filter_with_spaces(self):
+        """Test filtrowania z spacjami ?emotional_value=1, 2, 3."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '1, 2, 3'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # BaseInFilter automatycznie radzi sobie ze spacjami
+        self.assertEqual(len(response.data['results']), 3)
+
+    def test_filter_with_duplicate_values(self):
+        """Test filtrowania z duplikatami ?emotional_value=3,3,3."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '3,3,3'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Powinno być 1 punkt (duplikaty są ignorowane)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['emotional_value'], 3)
+
+    def test_filter_unauthenticated_fails(self):
+        """Test że nieautoryzowany request zwraca 401/403."""
+        # NIE autentykuj użytkownika
+        response = self.client.get(self.url, {'emotional_value': '1,2,3'})
+
+        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+
+    def test_filter_response_structure(self):
+        """Test że odpowiedź ma prawidłową strukturę."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, {'emotional_value': '1,2'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+
+        # Sprawdź strukturę pojedynczego EmotionPoint
+        if len(response.data['results']) > 0:
+            ep = response.data['results'][0]
+            required_fields = ['id', 'location', 'emotional_value', 'privacy_status', 'username']
+            for field in required_fields:
+                self.assertIn(field, ep)
