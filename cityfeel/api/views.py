@@ -23,8 +23,18 @@ class EmotionPointViewSet(ModelViewSet):
     serializer_class = EmotionPointSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['emotional_value']
+    filterset_fields = []
 
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related('location', 'user')
+
+        emotional_values = self.request.query_params.get('emotional_value')
+
+        if emotional_values:
+            values_list = emotional_values.split(',')
+            queryset = queryset.filter(emotional_value__in=values_list)
+
+        return queryset
 
 class LocationViewSet(ReadOnlyModelViewSet):
     """
