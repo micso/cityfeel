@@ -3,9 +3,11 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
 from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
+from django.db.models import Q
 
-from emotions.models import EmotionPoint
+from emotions.models import EmotionPoint, Comment
 from map.models import Location
+from auth.models import Friendship, CFUser
 
 
 @extend_schema_field({
@@ -35,9 +37,9 @@ from map.models import Location
 class PointField(serializers.Field):
     """
     Custom serializer field dla django.contrib.gis.db.models.fields.PointField.
-
     Konwertuje PostGIS Point na format {latitude, longitude} i odwrotnie.
     """
+
     def to_representation(self, value):
         """Konwertuje PostGIS Point na dict {latitude, longitude}."""
         if value is None:
@@ -109,6 +111,91 @@ class LocationSerializer(serializers.ModelSerializer):
         }
 
 
+class LocationListSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla endpointu GET /api/locations/.
+    Rozszerzony o latest_comment i licznik komentarzy.
+    """
+    coordinates = PointField()
+    avg_emotional_value = serializers.SerializerMethodField()
+    emotion_points_count = serializers.IntegerField(read_only=True)
+    latest_comment = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Location
+        fields = [
+            'id', 'name', 'coordinates',
+            'avg_emotional_value', 'emotion_points_count',
+            'latest_comment', 'comments_count'
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field({
+        'type': 'number',
+        'nullable': True,
+        'description': 'Średnia wartość emocjonalna (1-5) ze wszystkich ocen.',
+        'example': 4.2
+    })
+    def get_avg_emotional_value(self, obj):
+        return getattr(obj, 'avg_emotional_value', None)
+
+    @extend_schema_field({'type': 'integer'})
+    def get_comments_count(self, obj):
+        """Liczy komentarze tylko z publicznych punktów."""
+        try:
+            return Comment.objects.filter(
+                emotion_point__location=obj,
+                emotion_point__privacy_status='public'
+            ).count()
+        except Exception:
+            return 0
+
+    @extend_schema_field({
+        'type': 'object',
+        'nullable': True,
+        'description': 'Ostatni publiczny komentarz dodany w tej lokalizacji.',
+        'properties': {
+            'username': {'type': 'string'},
+            'content': {'type': 'string'},
+            'emotional_value': {'type': 'integer'}
+        },
+        'example': {
+            'username': 'JanKowalski',
+            'content': 'Bardzo ładne miejsce, polecam!',
+            'emotional_value': 5
+        }
+    })
+    def get_latest_comment(self, obj):
+        try:
+            comment = (
+                Comment.objects
+                .filter(
+                    emotion_point__location=obj,
+                    emotion_point__privacy_status='public'
+                )
+                .exclude(content__isnull=True)
+                .exclude(content__exact='')
+                .select_related('user', 'emotion_point')
+                .order_by('-created_at')
+                .first()
+            )
+
+            if comment:
+                content = comment.content
+                return {
+                    'username': comment.user.username,
+                    'content': content[:100] + '...' if len(content) > 100 else content,
+                    'emotional_value': comment.emotion_point.emotional_value
+                }
+        except Exception as e:
+            # W produkcji użyj loggera zamiast print
+            # print(f"⚠️ BŁĄD w get_latest_comment dla ID {obj.id}: {e}")
+            return None
+
+        return None
+
+
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     location = LocationSerializer()
@@ -142,13 +229,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Tworzy lub aktualizuje EmotionPoint z proximity matching dla Location.
-
-        Logika:
-        1. Wyciągnij nested location data z validated_data
-        2. Wyciągnij coordinates (PostGIS Point) i name z location data
-        3. Użyj proximity matching aby znaleźć lub utworzyć Location
-        4. Sprawdź czy użytkownik ma już EmotionPoint dla tej Location
-        5. Jeśli tak - zaktualizuj, jeśli nie - utwórz nowy
         """
         # Wyciągnij nested location data
         location_data = validated_data.pop('location')
@@ -169,7 +249,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         proximity_radius_degrees = proximity_radius_meters / 111320.0
 
         # Proximity matching: znajdź najbliższą Location w promieniu
-        # Używamy dwithin z wartością w stopniach dla SRID 4326
         nearby_location = (
             Location.objects
             .filter(coordinates__dwithin=(point, proximity_radius_degrees))
@@ -183,7 +262,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             location = nearby_location
         else:
             # Utwórz nową lokalizację
-            # Użyj nazwy podanej przez użytkownika lub wygeneruj automatycznie
             if custom_location_name:
                 location_name = custom_location_name
             else:
@@ -219,3 +297,66 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             )
 
         return emotion_point
+
+
+class FriendshipSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Friendship (zaproszenia do znajomych).
+    """
+    friend_id = serializers.PrimaryKeyRelatedField(
+        source='friend',
+        queryset=CFUser.objects.all(),
+        write_only=True
+    )
+    user = serializers.StringRelatedField(read_only=True)
+    friend = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Friendship
+        fields = ['id', 'user', 'friend', 'friend_id', 'status', 'created_at']
+        read_only_fields = ['id', 'user', 'friend', 'created_at']
+
+    def validate(self, attrs):
+        """
+        Walidacja:
+        1. Nie można zaprosić samego siebie.
+        2. Nie można zaprosić jeśli relacja już istnieje (w dowolną stronę).
+        """
+        request = self.context['request']
+
+        # Walidacja przy tworzeniu (POST) - friend_id jest wymagane
+        if self.instance is None:
+            friend = attrs['friend']
+            user = request.user
+
+            if user == friend:
+                raise serializers.ValidationError("Nie możesz wysłać zaproszenia do samego siebie.")
+
+            # Sprawdź czy relacja już istnieje (w dowolnym kierunku)
+            existing = Friendship.objects.filter(
+                (Q(user=user) & Q(friend=friend)) |
+                (Q(user=friend) & Q(friend=user))
+            ).exists()
+
+            if existing:
+                raise serializers.ValidationError(
+                    "Relacja z tym użytkownikiem już istnieje (oczekująca lub zaakceptowana).")
+
+        return attrs
+
+    def create(self, validated_data):
+        # Ustaw zalogowanego użytkownika jako wysyłającego
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class FriendUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer do wyświetlania użytkownika na liście znajomych.
+    """
+    friendship_id = serializers.IntegerField(read_only=True)
+    friendship_since = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = CFUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'avatar', 'friendship_id', 'friendship_since']

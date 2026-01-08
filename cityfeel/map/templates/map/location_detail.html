@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}{{ location.name }} - CityFeel{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'map:emotion_map' %}">Mapa</a></li>
+      <li class="breadcrumb-item active">{{ location.name }}</li>
+    </ol>
+  </nav>
+
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1 class="mb-2">{{ location.name }} - !STRONA NIE SKONCZONA!</h1>
+      <p class="text-muted">{{ location.coordinates.latitude }}, {{ location.coordinates.longitude }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+      {% if user_emotion_point %}
+        <div class="d-flex align-items-center justify-content-end gap-2">
+            <span class="badge bg-success">Już oceniłeś</span>
+            <form action="{% url 'emotions:delete' user_emotion_point.pk %}" method="post" onsubmit="return confirm('Usunąć twoją ocenę?');" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">Usuń</button>
+            </form>
+        </div>
+      {% else %}
+        <a href="#" class="btn btn-primary">Dodaj ocenę</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">Średnia ocena</h5>
+          {% if location.avg_emotional_value %}
+            <h2 class="display-3 text-primary">{{ location.avg_emotional_value|floatformat:1 }}</h2>
+            <p class="text-muted">na podstawie {{ location.emotion_points_count }} ocen</p>
+          {% else %}
+            <p class="text-muted">Brak ocen</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Rozkład ocen</h5>
+          {% for dist in emotion_distribution %}
+            <div class="d-flex align-items-center mb-2">
+              <span class="me-2">{{ dist.emotional_value }} ★</span>
+              <div class="progress flex-grow-1" style="height: 20px;">
+                <div class="progress-bar"
+                     style="width: {% widthratio dist.count location.emotion_points_count 100 %}%;">
+                  {{ dist.count }}
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <p class="text-muted">Brak danych</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body p-0">
+      <div id="detail-map" style="height: 300px;"></div>
+    </div>
+  </div>
+
+  <h3 class="mb-3">Publiczne oceny</h3>
+  {% for point in public_points %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h6>{{ point.user.username }}</h6>
+            <div class="d-flex align-items-center gap-2">
+                <p class="text-muted small mb-0">{{ point.created_at|date:"d.m.Y H:i" }}</p>
+
+                {% if request.user == point.user %}
+                    <form action="{% url 'emotions:delete' point.pk %}" method="post" onsubmit="return confirm('Czy na pewno chcesz usunąć ocenę?');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0" style="text-decoration: none; font-size: 0.875em;">
+                            (Usuń)
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+          </div>
+          <span class="badge bg-primary">{{ point.emotional_value }}/5</span>
+        </div>
+
+        {% if point.comment_set.exists %}
+          <hr>
+          <h6 class="small text-muted">Komentarze:</h6>
+          {% for comment in point.comment_set.all %}
+            <div class="mb-2 ps-3 border-start border-3">
+              <strong>{{ comment.user.username }}</strong>
+              <span class="text-muted small">{{ comment.created_at|date:"d.m.Y" }}</span>
+              <p class="mb-0">{{ comment.content }}</p>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="alert alert-info">
+      Brak publicznych ocen. Bądź pierwszy!
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Mini map
+  const detailMap = L.map('detail-map', {
+    dragging: false,
+    touchZoom: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    zoomControl: false
+  }).setView([{{ location.coordinates.latitude }}, {{ location.coordinates.longitude }}], 15);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMap);
+  L.marker([{{ location.coordinates.latitude }}, {{ location.coordinates.longitude }}]).addTo(detailMap);
+</script>
+{% endblock %}

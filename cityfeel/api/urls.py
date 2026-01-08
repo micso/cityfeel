@@ -7,11 +7,16 @@ app_name = 'api'
 
 router = routers.SimpleRouter()
 router.register('emotion-points', views.EmotionPointViewSet, basename='emotion_points')
+router.register('locations', views.LocationViewSet, basename='locations')
+router.register('friendship', views.FriendshipViewSet, basename='friendship')
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='api:schema'), name='swagger-ui'),
     path('schema/redoc/', SpectacularRedocView.as_view(url_name='api:schema'), name='redoc'),
+
+    # Custom endpoint alias dla listy znajomych (zgodnie z wymaganiami)
+    path('friends/', views.FriendshipViewSet.as_view({'get': 'friends_list'}), name='friends-list'),
 ]
 
 urlpatterns = urlpatterns + router.urls

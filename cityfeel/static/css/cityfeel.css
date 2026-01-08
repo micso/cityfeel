@@ -58,6 +58,7 @@ body {
   border-radius: 0.375rem;
   font-weight: 500;
   transition: all 0.2s ease;
+  color: #ffffff !important;
 }
 
 .btn-primary:hover {
@@ -65,6 +66,14 @@ body {
   border-color: #0a58ca;
   transform: translateY(-1px);
   box-shadow: 0 0.25rem 0.5rem rgba(13, 110, 253, 0.25);
+  color: #ffffff !important;
+}
+
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #0a58ca;
+  border-color: #0a53be;
+  color: #ffffff !important;
 }
 
 /* Form styling */
@@ -92,4 +101,145 @@ body {
 /* Alert messages styling */
 .alert {
   border-radius: 0.5rem;
+}
+
+/* ===== EMOTION MAP STYLES ===== */
+
+/* Cluster icons */
+.marker-cluster-custom {
+  background-clip: padding-box;
+  border-radius: 50%;
+}
+
+.marker-cluster-custom div {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.marker-cluster-custom div span {
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.marker-cluster-custom:hover div {
+  transform: scale(1.1);
+}
+
+/* Location popup */
+.location-popup {
+  min-width: 220px;
+  padding: 0.5rem 0;
+}
+
+.location-popup h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.location-popup .emotion-rating {
+  display: flex;
+  align-items: center;
+}
+
+.location-popup .stars {
+  letter-spacing: 2px;
+}
+
+/* Leaflet popup */
+.leaflet-popup-content {
+  margin: 1rem;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* CircleMarker hover */
+.leaflet-interactive:hover {
+  stroke-width: 3px;
+}
+
+/* ===== ADD EMOTION MODAL STYLES ===== */
+
+/* Modal customization */
+#addEmotionModal .modal-content {
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#addEmotionModal .modal-header {
+  padding: 1.5rem 1.5rem 1rem;
+}
+
+#addEmotionModal .modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+#addEmotionModal .modal-body {
+  padding: 1rem 1.5rem;
+}
+
+#addEmotionModal .modal-footer {
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+/* Star rating - interaktywne gwiazdki */
+.star-rating {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.star-rating input[type="radio"] {
+  display: none;
+}
+
+.star-rating label {
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.star-rating label:hover {
+  transform: scale(1.15);
+}
+
+/* Map cursor dla zalogowanych użytkowników */
+#map.clickable-map {
+  cursor: crosshair;
+}
+
+/* Toast customization */
+.toast-container {
+  z-index: 9999;
+}
+
+#successToast {
+  min-width: 300px;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Proximity info alert */
+#proximityInfo {
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
 }

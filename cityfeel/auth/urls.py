@@ -1,7 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 
-from .views import RegisterView, UserProfileView, UserProfileEditView
+from .views import RegisterView, UserProfileView, UserProfileEditView, CommunityView, MyFriendsView
 
 app_name = 'cf_auth'
 
@@ -18,4 +18,10 @@ urlpatterns = [
     # User Profile
     path('user/<int:user_id>/', UserProfileView.as_view(), name='profile'),
     path('user/edit/', UserProfileEditView.as_view(), name='profile_edit'),
+
+    # Community
+    path('users/', CommunityView.as_view(), name='community'),
+
+    # My Friends - TO JEST KLUCZOWE
+    path('friends/', MyFriendsView.as_view(), name='my_friends'),
 ]

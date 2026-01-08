@@ -6,11 +6,29 @@ paths:
   /api/emotion-points/:
     get:
       operationId: emotion_points_list
+      description: |-
+        ViewSet dla endpointu /api/emotion-points/.
+
+        GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+        POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+        Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+        lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+        Filtrowanie:
+        - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
       parameters:
       - in: query
         name: emotional_value
         schema:
-          type: integer
+          type: array
+          items:
+            type: integer
+            maximum: 5
+            minimum: 1
+        description: Wiele wartości można rozdzielić przecinkami
+        explode: false
+        style: form
       - name: page
         required: false
         in: query
@@ -30,6 +48,17 @@ paths:
           description: ''
     post:
       operationId: emotion_points_create
+      description: |-
+        ViewSet dla endpointu /api/emotion-points/.
+
+        GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+        POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+        Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+        lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+        Filtrowanie:
+        - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
       tags:
       - emotion-points
       requestBody:
@@ -50,6 +79,17 @@ paths:
   /api/emotion-points/{id}/:
     get:
       operationId: emotion_points_retrieve
+      description: |-
+        ViewSet dla endpointu /api/emotion-points/.
+
+        GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+        POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+        Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+        lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+        Filtrowanie:
+        - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
       parameters:
       - in: path
         name: id
@@ -70,6 +110,17 @@ paths:
           description: ''
     put:
       operationId: emotion_points_update
+      description: |-
+        ViewSet dla endpointu /api/emotion-points/.
+
+        GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+        POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+        Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+        lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+        Filtrowanie:
+        - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
       parameters:
       - in: path
         name: id
@@ -96,6 +147,17 @@ paths:
           description: ''
     patch:
       operationId: emotion_points_partial_update
+      description: |-
+        ViewSet dla endpointu /api/emotion-points/.
+
+        GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+        POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+        Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+        lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+        Filtrowanie:
+        - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
       parameters:
       - in: path
         name: id
@@ -121,6 +183,17 @@ paths:
           description: ''
     delete:
       operationId: emotion_points_destroy
+      description: |-
+        ViewSet dla endpointu /api/emotion-points/.
+
+        GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
+        POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
+
+        Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
+        lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
+
+        Filtrowanie:
+        - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
       parameters:
       - in: path
         name: id
@@ -135,6 +208,285 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/friends/:
+    get:
+      operationId: friends_retrieve
+      description: |-
+        Zwraca listę znajomych (status ACCEPTED).
+        Zwraca dane użytkowników, a nie obiekty Friendship.
+        Endpoint: /api/friends/ (mapowane w urls.py)
+      tags:
+      - friends
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+  /api/friendship/:
+    post:
+      operationId: friendship_create
+      description: |-
+        ViewSet dla systemu znajomych.
+
+        POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
+        PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
+        DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
+        GET /api/friends/ - (Action) Lista znajomych
+        GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
+      tags:
+      - friendship
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Friendship'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+  /api/friendship/{id}/:
+    get:
+      operationId: friendship_retrieve
+      description: |-
+        ViewSet dla systemu znajomych.
+
+        POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
+        PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
+        DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
+        GET /api/friends/ - (Action) Lista znajomych
+        GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - friendship
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+    put:
+      operationId: friendship_update
+      description: |-
+        ViewSet dla systemu znajomych.
+
+        POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
+        PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
+        DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
+        GET /api/friends/ - (Action) Lista znajomych
+        GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - friendship
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Friendship'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+    patch:
+      operationId: friendship_partial_update
+      description: |-
+        ViewSet dla systemu znajomych.
+
+        POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
+        PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
+        DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
+        GET /api/friends/ - (Action) Lista znajomych
+        GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - friendship
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFriendship'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+    delete:
+      operationId: friendship_destroy
+      description: |-
+        ViewSet dla systemu znajomych.
+
+        POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
+        PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
+        DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
+        GET /api/friends/ - (Action) Lista znajomych
+        GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - friendship
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/friendship/friends/:
+    get:
+      operationId: friendship_friends_retrieve
+      description: |-
+        Zwraca listę znajomych (status ACCEPTED).
+        Zwraca dane użytkowników, a nie obiekty Friendship.
+        Endpoint: /api/friends/ (mapowane w urls.py)
+      tags:
+      - friendship
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+  /api/friendship/requests/:
+    get:
+      operationId: friendship_requests_retrieve
+      description: |-
+        Zwraca listę otrzymanych, oczekujących zaproszeń.
+        Endpoint: /api/friendship/requests/
+      tags:
+      - friendship
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+  /api/locations/:
+    get:
+      operationId: locations_list
+      description: |-
+        ViewSet dla endpointu /api/locations/ (READ-ONLY).
+
+        Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
+        Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
+
+        Filtrowanie:
+        - ?name=Gdańsk - filtrowanie po nazwie (icontains)
+        - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
+        - ?bbox=18.5,54.3,18.7,54.4 - filtrowanie po bounding box
+      parameters:
+      - in: query
+        name: bbox
+        schema:
+          type: string
+      - in: query
+        name: lat
+        schema:
+          type: number
+      - in: query
+        name: lon
+        schema:
+          type: number
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: radius
+        schema:
+          type: number
+      tags:
+      - locations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLocationListList'
+          description: ''
+  /api/locations/{id}/:
+    get:
+      operationId: locations_retrieve
+      description: |-
+        ViewSet dla endpointu /api/locations/ (READ-ONLY).
+
+        Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
+        Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
+
+        Filtrowanie:
+        - ?name=Gdańsk - filtrowanie po nazwie (icontains)
+        - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
+        - ?bbox=18.5,54.3,18.7,54.4 - filtrowanie po bounding box
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Lokalizacja.
+        required: true
+      tags:
+      - locations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationList'
+          description: ''
   /api/schema/:
     get:
       operationId: schema_retrieve
@@ -300,7 +652,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PrivacyStatusEnum'
           description: |-
-            Widoczność tego punktu emocji
+            Status prywatności: 'public' (z imieniem i nazwiskiem, widoczne na profilu) lub 'private' (anonimowe, nie widoczne na profilu). Wszystkie emocje są widoczne na mapie.
 
             * `public` - Publiczny
             * `private` - Prywatny
@@ -312,6 +664,41 @@ components:
       - id
       - location
       - username
+    Friendship:
+      type: object
+      description: Serializer dla modelu Friendship (zaproszenia do znajomych).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: string
+          readOnly: true
+        friend:
+          type: string
+          readOnly: true
+        friend_id:
+          type: integer
+          writeOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          description: |-
+            Status relacji (pending/accepted)
+
+            * `pending` - Oczekujące
+            * `accepted` - Zaakceptowane
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Data utworzenia relacji
+      required:
+      - created_at
+      - friend
+      - friend_id
+      - id
+      - user
     Location:
       type: object
       description: |-
@@ -350,6 +737,76 @@ components:
       required:
       - coordinates
       - id
+    LocationList:
+      type: object
+      description: |-
+        Serializer dla endpointu GET /api/locations/.
+        Rozszerzony o latest_comment i licznik komentarzy.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          description: Nazwa lokalizacji
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: float
+              minimum: -90.0
+              maximum: 90.0
+              description: Szerokość geograficzna
+            longitude:
+              type: number
+              format: float
+              minimum: -180.0
+              maximum: 180.0
+              description: Długość geograficzna
+          required:
+          - latitude
+          - longitude
+          example:
+            latitude: 54.352
+            longitude: 18.6466
+        avg_emotional_value:
+          type: number
+          nullable: true
+          description: Średnia wartość emocjonalna (1-5) ze wszystkich ocen.
+          example: 4.2
+          readOnly: true
+        emotion_points_count:
+          type: integer
+          readOnly: true
+        latest_comment:
+          type: object
+          nullable: true
+          description: Ostatni publiczny komentarz dodany w tej lokalizacji.
+          properties:
+            username:
+              type: string
+            content:
+              type: string
+            emotional_value:
+              type: integer
+          example:
+            username: JanKowalski
+            content: Bardzo ładne miejsce, polecam!
+            emotional_value: 5
+          readOnly: true
+        comments_count:
+          type: integer
+          readOnly: true
+      required:
+      - avg_emotional_value
+      - comments_count
+      - coordinates
+      - emotion_points_count
+      - id
+      - latest_comment
+      - name
     PaginatedEmotionPointList:
       type: object
       required:
@@ -373,6 +830,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EmotionPoint'
+    PaginatedLocationListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationList'
     PatchedEmotionPoint:
       type: object
       properties:
@@ -390,13 +870,42 @@ components:
           allOf:
           - $ref: '#/components/schemas/PrivacyStatusEnum'
           description: |-
-            Widoczność tego punktu emocji
+            Status prywatności: 'public' (z imieniem i nazwiskiem, widoczne na profilu) lub 'private' (anonimowe, nie widoczne na profilu). Wszystkie emocje są widoczne na mapie.
 
             * `public` - Publiczny
             * `private` - Prywatny
         username:
           type: string
           readOnly: true
+    PatchedFriendship:
+      type: object
+      description: Serializer dla modelu Friendship (zaproszenia do znajomych).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: string
+          readOnly: true
+        friend:
+          type: string
+          readOnly: true
+        friend_id:
+          type: integer
+          writeOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          description: |-
+            Status relacji (pending/accepted)
+
+            * `pending` - Oczekujące
+            * `accepted` - Zaakceptowane
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Data utworzenia relacji
     PrivacyStatusEnum:
       enum:
       - public
@@ -405,6 +914,14 @@ components:
       description: |-
         * `public` - Publiczny
         * `private` - Prywatny
+    StatusEnum:
+      enum:
+      - pending
+      - accepted
+      type: string
+      description: |-
+        * `pending` - Oczekujące
+        * `accepted` - Zaakceptowane
   securitySchemes:
     cookieAuth:
       type: apiKey
