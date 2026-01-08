@@ -3,31 +3,16 @@
 
 {% block title %}Mapa Emocji - CityFeel{% endblock %}
 
-<<<<<<< HEAD
-{# Czyścimy klasy kontenera main (usuwamy 'container' i marginesy), ustawiamy pełną szerokość i wysokość #}
-{% block main_class %}p-0 m-0 w-100 h-100{% endblock %}
-
 {% block extra_css %}
 <style>
-    #map {
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-    }
-</style>
-{% endblock %}
-=======
-{% block extra_css %}
-<style>
-    /* FIX: Blokujemy suwak CAŁKOWICIE tylko na widoku mapy */
     body {
         overflow: hidden;
     }
 </style>
 {% endblock %}
 
+{# To pozwala usunąć domyślne marginesy kontenera z base.html #}
 {% block main_attrs %}{% endblock %}
->>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
 
 {% block messages_area %}
   {% if messages %}
@@ -44,6 +29,7 @@
 
 {% block content %}
 <div id="map"
+     style="height: calc(100vh - 56px); width: 100%;"
      data-api-url="{% url 'api:locations-list' %}"
      data-emotion-points-url="{% url 'api:emotion_points-list' %}"
      data-user-authenticated="{{ user.is_authenticated|lower }}"
@@ -57,68 +43,15 @@
                 <h5 class="modal-title" id="addEmotionModalLabel">Oceń to miejsce</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
             </div>
-<<<<<<< HEAD
-
-            <div class="modal-body">
-                <div id="proximityInfo" class="alert d-none mb-3" role="alert">
-                    <span id="proximityText"></span>
-                </div>
-
-                <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
-
-                <div class="mb-3 d-none" id="locationNameContainer">
-                    <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
-                    <input type="text" class="form-control" id="locationName" name="location_name" maxlength="200" placeholder="np. Park Oliwski, Gdańsk Główny...">
-                    <small class="form-text text-muted">
-                        Opcjonalne - jeśli nie podasz, zostanie wygenerowana automatycznie na podstawie współrzędnych.
-                    </small>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label fw-semibold">Twoja ocena <span class="text-danger">*</span></label>
-                    <div class="star-rating" id="starRating">
-                        <input type="radio" name="emotional_value" id="star5" value="5" required>
-                        <label for="star5" title="Bardzo pozytywnie (5)">★</label>
-
-                        <input type="radio" name="emotional_value" id="star4" value="4">
-                        <label for="star4" title="Pozytywnie (4)">★</label>
-
-                        <input type="radio" name="emotional_value" id="star3" value="3">
-                        <label for="star3" title="Neutralnie (3)">★</label>
-
-                        <input type="radio" name="emotional_value" id="star2" value="2">
-                        <label for="star2" title="Negatywnie (2)">★</label>
-
-                        <input type="radio" name="emotional_value" id="star1" value="1">
-                        <label for="star1" title="Bardzo negatywnie (1)">★</label>
-                    </div>
-                    <small class="form-text text-muted">Kliknij gwiazdkę aby ocenić miejsce</small>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Prywatność</label>
-                    <select class="form-select" id="privacyStatus" name="privacy_status">
-                        <option value="public" selected>Publiczna - z Twoim imieniem i nazwiskiem</option>
-                        <option value="private">Prywatna - anonimowa</option>
-                    </select>
-                    <small class="form-text text-muted">
-                        Wszystkie emocje są widoczne na mapie i wpływają na statystyki. Prywatne emocje są anonimowe - nie pokazują kto je dodał i nie pojawiają się na Twoim profilu.
-                    </small>
-                </div>
-
-                <div class="text-muted small">
-                    <strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span>
-                </div>
-            </div>
-
-=======
             <div class="modal-body">
                 <div id="proximityInfo" class="alert d-none mb-3" role="alert"><span id="proximityText"></span></div>
                 <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
+
                 <div class="mb-3 d-none" id="locationNameContainer">
                     <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
                     <input type="text" class="form-control" id="locationName" name="location_name" maxlength="200" placeholder="np. Park Oliwski...">
                 </div>
+
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Twoja ocena <span class="text-danger">*</span></label>
                     <div class="star-rating" id="starRating">
@@ -129,6 +62,7 @@
                         <input type="radio" name="emotional_value" id="star1" value="1"><label for="star1">★</label>
                     </div>
                 </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Prywatność</label>
                     <select class="form-select" id="privacyStatus" name="privacy_status">
@@ -136,18 +70,14 @@
                         <option value="private">Prywatna</option>
                     </select>
                 </div>
+
                 <div class="text-muted small"><strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span></div>
             </div>
->>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
                 <button type="button" class="btn btn-primary" id="submitEmotion">
                     <span id="submitText">Dodaj ocenę</span>
-<<<<<<< HEAD
-                    <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
-=======
                     <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
->>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
                 </button>
             </div>
         </div>
@@ -157,13 +87,7 @@
 <div class="toast-container position-fixed top-0 end-0 p-3">
     <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
-<<<<<<< HEAD
-            <div class="toast-body" id="successMessage">
-                Twoja ocena została zapisana!
-            </div>
-=======
             <div class="toast-body" id="successMessage">Twoja ocena została zapisana!</div>
->>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Zamknij"></button>
         </div>
     </div>
@@ -172,25 +96,13 @@
 
 {% block extra_js %}
 <script>
-<<<<<<< HEAD
-    // Initialize Leaflet map (global variable for map.js)
+    // Inicjalizacja mapy Leaflet
     window.map = L.map('map').setView([54.3755425, 18.6088834], 12);
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-        minZoom: 3
-    }).addTo(window.map);
-</script>
-
-=======
-    window.map = L.map('map').setView([54.3755425, 18.6088834], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19, minZoom: 3
     }).addTo(window.map);
 </script>
->>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
 <script src="{% static 'js/map.js' %}"></script>
 {% endblock %}
