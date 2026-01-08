@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from map.views import EmotionMapView
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('auth.urls')),
