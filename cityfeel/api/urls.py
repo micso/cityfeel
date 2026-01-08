@@ -9,6 +9,7 @@ router = routers.SimpleRouter()
 router.register('emotion-points', views.EmotionPointViewSet, basename='emotion_points')
 router.register('locations', views.LocationViewSet, basename='locations')
 router.register('friendship', views.FriendshipViewSet, basename='friendship')
+router.register('comments', views.CommentViewSet, basename='comments')
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),

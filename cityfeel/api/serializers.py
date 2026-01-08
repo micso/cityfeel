@@ -189,8 +189,6 @@ class LocationListSerializer(serializers.ModelSerializer):
                     'emotional_value': comment.emotion_point.emotional_value
                 }
         except Exception as e:
-            # W produkcji użyj loggera zamiast print
-            # print(f"⚠️ BŁĄD w get_latest_comment dla ID {obj.id}: {e}")
             return None
 
         return None
@@ -245,7 +243,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         )
 
         # Konwertuj metry na stopnie (przybliżenie)
-        # 1 stopień szerokości geograficznej ≈ 111320 metrów
         proximity_radius_degrees = proximity_radius_meters / 111320.0
 
         # Proximity matching: znajdź najbliższą Location w promieniu
@@ -265,7 +262,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             if custom_location_name:
                 location_name = custom_location_name
             else:
-                # Nazwa lokalizacji: "Lat: XX.XXXX, Lon: YY.YYYY"
                 location_name = f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
 
             location = Location.objects.create(
@@ -360,3 +356,33 @@ class FriendUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CFUser
         fields = ['id', 'username', 'first_name', 'last_name', 'avatar', 'friendship_id', 'friendship_since']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Comment.
+    """
+    username = serializers.CharField(source='user.username', read_only=True)
+    point_id = serializers.PrimaryKeyRelatedField(
+        source='emotion_point',
+        queryset=EmotionPoint.objects.all(),
+        write_only=True,
+        error_messages={'does_not_exist': 'Podany punkt emocji nie istnieje.'}
+    )
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'username', 'content', 'created_at', 'point_id']
+        read_only_fields = ['id', 'username', 'created_at']
+        extra_kwargs = {
+            'content': {
+                'error_messages': {
+                    'blank': 'Treść komentarza nie może być pusta.',
+                    'required': 'Treść komentarza jest wymagana.'
+                }
+            }
+        }
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)

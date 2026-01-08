@@ -1,6 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ location.name }} - CityFeel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
 
 {% block content %}
 <div class="container my-4">
@@ -13,55 +18,58 @@
 
   <div class="row mb-4">
     <div class="col-md-8">
-      <h1 class="mb-2">{{ location.name }} - !STRONA NIE SKONCZONA!</h1>
-      <p class="text-muted">{{ location.coordinates.latitude }}, {{ location.coordinates.longitude }}</p>
+      <h1 class="mb-2">{{ location.name }}</h1>
+      <p class="text-muted">
+        Lat: {{ location.coordinates.y|floatformat:5 }}, Lon: {{ location.coordinates.x|floatformat:5 }}
+      </p>
     </div>
     <div class="col-md-4 text-end">
       {% if user_emotion_point %}
         <div class="d-flex align-items-center justify-content-end gap-2">
-            <span class="badge bg-success">Już oceniłeś</span>
+            <span class="badge bg-success">Twój głos: {{ user_emotion_point.emotional_value }}/5</span>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#rateModal">Edytuj</button>
             <form action="{% url 'emotions:delete' user_emotion_point.pk %}" method="post" onsubmit="return confirm('Usunąć twoją ocenę?');" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-danger btn-sm">Usuń</button>
             </form>
         </div>
       {% else %}
-        <a href="#" class="btn btn-primary">Dodaj ocenę</a>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rateModal">Dodaj ocenę</button>
       {% endif %}
     </div>
   </div>
 
   <div class="row mb-4">
     <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-body text-center">
+      <div class="card shadow-sm h-100">
+        <div class="card-body text-center d-flex flex-column justify-content-center">
           <h5 class="card-title">Średnia ocena</h5>
           {% if location.avg_emotional_value %}
-            <h2 class="display-3 text-primary">{{ location.avg_emotional_value|floatformat:1 }}</h2>
+            <h2 class="display-3 text-primary fw-bold">{{ location.avg_emotional_value|floatformat:1 }}</h2>
             <p class="text-muted">na podstawie {{ location.emotion_points_count }} ocen</p>
           {% else %}
-            <p class="text-muted">Brak ocen</p>
+            <p class="text-muted mt-3">Brak ocen. Bądź pierwszy!</p>
           {% endif %}
         </div>
       </div>
     </div>
 
     <div class="col-md-6">
-      <div class="card shadow-sm">
+      <div class="card shadow-sm h-100">
         <div class="card-body">
           <h5 class="card-title mb-3">Rozkład ocen</h5>
           {% for dist in emotion_distribution %}
             <div class="d-flex align-items-center mb-2">
-              <span class="me-2">{{ dist.emotional_value }} ★</span>
+              <span class="me-2 fw-bold" style="width: 30px;">{{ dist.emotional_value }}</span>
               <div class="progress flex-grow-1" style="height: 20px;">
-                <div class="progress-bar"
+                <div class="progress-bar bg-primary"
                      style="width: {% widthratio dist.count location.emotion_points_count 100 %}%;">
                   {{ dist.count }}
                 </div>
               </div>
             </div>
           {% empty %}
-            <p class="text-muted">Brak danych</p>
+            <p class="text-muted">Brak danych do wykresu.</p>
           {% endfor %}
         </div>
       </div>
@@ -70,66 +78,101 @@
 
   <div class="card shadow-sm mb-4">
     <div class="card-body p-0">
-      <div id="detail-map" style="height: 300px;"></div>
+      <div id="detail-map" style="height: 300px; width: 100%; border-radius: 4px;"></div>
     </div>
   </div>
 
-  <h3 class="mb-3">Publiczne oceny</h3>
+  <h3 class="mb-3">Publiczne opinie</h3>
   {% for point in public_points %}
     <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <div class="d-flex justify-content-between">
+        <div class="d-flex justify-content-between align-items-start">
           <div>
-            <h6>{{ point.user.username }}</h6>
-            <div class="d-flex align-items-center gap-2">
-                <p class="text-muted small mb-0">{{ point.created_at|date:"d.m.Y H:i" }}</p>
-
-                {% if request.user == point.user %}
-                    <form action="{% url 'emotions:delete' point.pk %}" method="post" onsubmit="return confirm('Czy na pewno chcesz usunąć ocenę?');" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0" style="text-decoration: none; font-size: 0.875em;">
-                            (Usuń)
-                        </button>
-                    </form>
-                {% endif %}
-            </div>
+            <h6 class="fw-bold mb-0">{{ point.user.username }}</h6>
+            <small class="text-muted">{{ point.created_at|date:"d.m.Y H:i" }}</small>
           </div>
-          <span class="badge bg-primary">{{ point.emotional_value }}/5</span>
+          <span class="badge bg-primary fs-6">{{ point.emotional_value }}/5</span>
         </div>
 
-        {% if point.comment_set.exists %}
-          <hr>
-          <h6 class="small text-muted">Komentarze:</h6>
-          {% for comment in point.comment_set.all %}
-            <div class="mb-2 ps-3 border-start border-3">
-              <strong>{{ comment.user.username }}</strong>
-              <span class="text-muted small">{{ comment.created_at|date:"d.m.Y" }}</span>
-              <p class="mb-0">{{ comment.content }}</p>
-            </div>
-          {% endfor %}
+        {% if point.comments.exists %}
+          <hr class="my-2">
+          <div class="mt-2">
+            {% for comment in point.comments.all %}
+              <div class="ps-3 border-start border-3 border-light mb-2">
+                <small class="text-muted fw-bold">{{ comment.user.username }}:</small>
+                <span class="fst-italic">"{{ comment.content }}"</span>
+              </div>
+            {% endfor %}
+          </div>
         {% endif %}
       </div>
     </div>
   {% empty %}
-    <div class="alert alert-info">
-      Brak publicznych ocen. Bądź pierwszy!
+    <div class="alert alert-light text-center border">
+      Brak publicznych opinii dla tego miejsca.
     </div>
   {% endfor %}
+</div>
+
+<div class="modal fade" id="rateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Oceń to miejsce</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Twoja ocena (1-5)</label>
+                <select name="emotional_value" class="form-select" required>
+                    <option value="" disabled selected>Wybierz...</option>
+                    <option value="5" {% if user_emotion_point.emotional_value == 5 %}selected{% endif %}>5 - Super</option>
+                    <option value="4" {% if user_emotion_point.emotional_value == 4 %}selected{% endif %}>4 - Dobrze</option>
+                    <option value="3" {% if user_emotion_point.emotional_value == 3 %}selected{% endif %}>3 - Średnio</option>
+                    <option value="2" {% if user_emotion_point.emotional_value == 2 %}selected{% endif %}>2 - Słabo</option>
+                    <option value="1" {% if user_emotion_point.emotional_value == 1 %}selected{% endif %}>1 - Tragicznie</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Prywatność</label>
+                <select name="privacy_status" class="form-select">
+                    <option value="public" {% if user_emotion_point.privacy_status == 'public' %}selected{% endif %}>Publiczna (widoczna z nickiem)</option>
+                    <option value="private" {% if user_emotion_point.privacy_status == 'private' %}selected{% endif %}>Prywatna (anonimowa)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Zapisz ocenę</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // Mini map
-  const detailMap = L.map('detail-map', {
-    dragging: false,
-    touchZoom: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    zoomControl: false
-  }).setView([{{ location.coordinates.latitude }}, {{ location.coordinates.longitude }}], 15);
+  document.addEventListener("DOMContentLoaded", function() {
+    var lat = {{ location.coordinates.y|stringformat:".6f" }};
+    var lon = {{ location.coordinates.x|stringformat:".6f" }};
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMap);
-  L.marker([{{ location.coordinates.latitude }}, {{ location.coordinates.longitude }}]).addTo(detailMap);
+    var detailMap = L.map('detail-map', {
+        scrollWheelZoom: false
+    }).setView([lat, lon], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(detailMap);
+
+    L.marker([lat, lon]).addTo(detailMap)
+      .bindPopup("<b>{{ location.name }}</b>")
+      .openPopup();
+      
+    setTimeout(function(){ detailMap.invalidateSize()}, 200);
+  });
 </script>
 {% endblock %}

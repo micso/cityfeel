@@ -6,23 +6,29 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Avg, Count, Q
 
-from emotions.models import EmotionPoint
+from emotions.models import EmotionPoint, Comment
 from map.models import Location
 from auth.models import Friendship, CFUser
-from .serializers import EmotionPointSerializer, LocationListSerializer, FriendshipSerializer, FriendUserSerializer
+from .serializers import (
+    EmotionPointSerializer, 
+    LocationListSerializer, 
+    FriendshipSerializer, 
+    FriendUserSerializer,
+    CommentSerializer
+)
 from .filters import LocationFilter, EmotionPointFilter
 
 
 class EmotionPointViewSet(ModelViewSet):
     """
     ViewSet dla endpointu /api/emotion-points/.
-
+    
     GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
     POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
-
+    
     Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
     lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
-
+    
     Filtrowanie:
     - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
     """
@@ -36,10 +42,10 @@ class EmotionPointViewSet(ModelViewSet):
 class LocationViewSet(ReadOnlyModelViewSet):
     """
     ViewSet dla endpointu /api/locations/ (READ-ONLY).
-
+    
     Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
     Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
-
+    
     Filtrowanie:
     - ?name=Gdańsk - filtrowanie po nazwie (icontains)
     - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
@@ -74,7 +80,7 @@ class FriendshipViewSet(mixins.CreateModelMixin,
                         GenericViewSet):
     """
     ViewSet dla systemu znajomych.
-
+    
     POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
     PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
     DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
@@ -127,10 +133,32 @@ class FriendshipViewSet(mixins.CreateModelMixin,
             friend_user = f.friend if is_sender else f.user
 
             # Przygotuj dane do serializacji
-            # Używamy setattr, żeby przekazać dane o relacji do serializera użytkownika
             friend_user.friendship_id = f.id
             friend_user.friendship_since = f.created_at
             friends_data.append(friend_user)
 
         serializer = FriendUserSerializer(friends_data, many=True, context={'request': request})
         return Response(serializer.data)
+
+
+class CommentViewSet(mixins.CreateModelMixin, GenericViewSet):
+    """
+    ViewSet dla komentarzy.
+    Obsługuje tylko tworzenie (POST).
+    Endpoint: /api/comments/
+    """
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Comment.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        """
+        Dodaje nowy komentarz do punktu emocji.
+        Wymaga: content, point_id.
+        Automatycznie przypisuje zalogowanego użytkownika.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
