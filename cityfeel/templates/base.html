@@ -14,17 +14,28 @@
 
     {% block extra_css %}{% endblock %}
 </head>
+<<<<<<< HEAD
 <body class="d-flex flex-column vh-100">
     <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom flex-shrink-0" style="z-index: 1030;">
+=======
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+>>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
         <div class="container-fluid">
             <a class="navbar-brand text-primary fw-bold" href="{% url 'map:emotion_map' %}">
                 CityFeel
             </a>
+<<<<<<< HEAD
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Przełącz nawigację">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
+=======
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+>>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
@@ -49,6 +60,7 @@
         </div>
     </nav>
 
+<<<<<<< HEAD
     <div class="position-absolute w-100 p-0" style="top: 60px; z-index: 2000; pointer-events: none;">
         {% if messages %}
         <div class="container d-flex justify-content-center">
@@ -65,6 +77,22 @@
     </div>
 
     <main class="flex-grow-1 position-relative {% block main_class %}container my-4{% endblock %}" style="overflow: hidden;">
+=======
+    {% block messages_area %}
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endblock %}
+
+    <main {% block main_attrs %}class="container my-4" {% endblock %}>
+>>>>>>> a649b00 (Fix: Ostateczna poprawka layoutu mapy (brak suwakow) i naprawa scrolla na reszcie strony)
         {% block content %}
         {% endblock %}
     </main>

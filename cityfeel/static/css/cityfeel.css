@@ -1,245 +1,93 @@
-/* CityFeel Custom Styles */
+{% extends "base.html" %}
+{% load static %}
 
-/* Typography */
-body {
-  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
+{% block title %}Mapa Emocji - CityFeel{% endblock %}
 
-/* Navbar customization */
-.navbar-brand {
-  font-size: 1.5rem;
-  letter-spacing: -0.5px;
-}
+{% block main_attrs %}{% endblock %}
 
-.navbar-light .navbar-nav .nav-link {
-  color: #495057;
-  transition: color 0.2s ease;
-}
+{% block messages_area %}
+  {% if messages %}
+    <div style="position: absolute; top: 70px; right: 20px; z-index: 9999; max-width: 400px;">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}
 
-.navbar-light .navbar-nav .nav-link:hover {
-  color: #0d6efd;
-}
+{% block content %}
+<div id="map"
+     style="height: calc(100vh - 56px); width: 100%;"
+     data-api-url="{% url 'api:locations-list' %}"
+     data-emotion-points-url="{% url 'api:emotion_points-list' %}"
+     data-user-authenticated="{{ user.is_authenticated|lower }}"
+     data-proximity-radius="{{ settings.CITYFEEL_LOCATION_PROXIMITY_RADIUS }}">
+</div>
 
-.navbar-light .navbar-nav .nav-link.text-muted {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+<div class="modal fade" id="addEmotionModal" tabindex="-1" aria-labelledby="addEmotionModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title" id="addEmotionModalLabel">Oceń to miejsce</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+      </div>
+      <div class="modal-body">
+        <div id="proximityInfo" class="alert d-none mb-3" role="alert"><span id="proximityText"></span></div>
+        <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
+        <div class="mb-3 d-none" id="locationNameContainer">
+          <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
+          <input type="text" class="form-control" id="locationName" name="location_name" maxlength="200" placeholder="np. Park Oliwski...">
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Twoja ocena <span class="text-danger">*</span></label>
+          <div class="star-rating" id="starRating">
+            <input type="radio" name="emotional_value" id="star5" value="5" required><label for="star5">★</label>
+            <input type="radio" name="emotional_value" id="star4" value="4"><label for="star4">★</label>
+            <input type="radio" name="emotional_value" id="star3" value="3"><label for="star3">★</label>
+            <input type="radio" name="emotional_value" id="star2" value="2"><label for="star2">★</label>
+            <input type="radio" name="emotional_value" id="star1" value="1"><label for="star1">★</label>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Prywatność</label>
+          <select class="form-select" id="privacyStatus" name="privacy_status">
+            <option value="public" selected>Publiczna</option>
+            <option value="private">Prywatna</option>
+          </select>
+        </div>
+        <div class="text-muted small"><strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+        <button type="button" class="btn btn-primary" id="submitEmotion">
+          <span id="submitText">Dodaj ocenę</span>
+          <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
-/* Logout button as link */
-.btn-link {
-  padding: 0;
-  border: none;
-  text-decoration: none;
-}
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="successMessage">Twoja ocena została zapisana!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Zamknij"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
 
-.btn-link.nav-link {
-  background: none;
-  padding: 0.5rem 1rem;
-}
-
-.btn-link.nav-link:hover {
-  text-decoration: none;
-}
-
-/* Card styling */
-.card {
-  border: none;
-  border-radius: 0.5rem;
-}
-
-.card.shadow-sm {
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-/* Button styling */
-.btn-primary {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  color: #ffffff !important;
-}
-
-.btn-primary:hover {
-  background-color: #0b5ed7;
-  border-color: #0a58ca;
-  transform: translateY(-1px);
-  box-shadow: 0 0.25rem 0.5rem rgba(13, 110, 253, 0.25);
-  color: #ffffff !important;
-}
-
-.btn-primary:focus,
-.btn-primary:active {
-  background-color: #0a58ca;
-  border-color: #0a53be;
-  color: #ffffff !important;
-}
-
-/* Form styling */
-.form-control {
-  border-radius: 0.375rem;
-  border: 1px solid #dee2e6;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.form-control:focus {
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Map container */
-#map {
-  border-radius: 0;
-}
-
-/* Leaflet popup customization */
-.leaflet-popup-content-wrapper {
-  border-radius: 0.5rem;
-}
-
-/* Alert messages styling */
-.alert {
-  border-radius: 0.5rem;
-}
-
-/* ===== EMOTION MAP STYLES ===== */
-
-/* Cluster icons */
-.marker-cluster-custom {
-  background-clip: padding-box;
-  border-radius: 50%;
-}
-
-.marker-cluster-custom div {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease;
-}
-
-.marker-cluster-custom div span {
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
-.marker-cluster-custom:hover div {
-  transform: scale(1.1);
-}
-
-/* Location popup */
-.location-popup {
-  min-width: 220px;
-  padding: 0.5rem 0;
-}
-
-.location-popup h5 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-}
-
-.location-popup .emotion-rating {
-  display: flex;
-  align-items: center;
-}
-
-.location-popup .stars {
-  letter-spacing: 2px;
-}
-
-/* Leaflet popup */
-.leaflet-popup-content {
-  margin: 1rem;
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 0.5rem;
-  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
-}
-
-/* CircleMarker hover */
-.leaflet-interactive:hover {
-  stroke-width: 3px;
-}
-
-/* ===== ADD EMOTION MODAL STYLES ===== */
-
-/* Modal customization */
-#addEmotionModal .modal-content {
-  border-radius: 0.75rem;
-  border: none;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-#addEmotionModal .modal-header {
-  padding: 1.5rem 1.5rem 1rem;
-}
-
-#addEmotionModal .modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #212529;
-}
-
-#addEmotionModal .modal-body {
-  padding: 1rem 1.5rem;
-}
-
-#addEmotionModal .modal-footer {
-  padding: 1rem 1.5rem 1.5rem;
-}
-
-/* Star rating - interaktywne gwiazdki */
-.star-rating {
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.star-rating input[type="radio"] {
-  display: none;
-}
-
-.star-rating label {
-  color: #ddd;
-  cursor: pointer;
-  transition: color 0.2s ease, transform 0.2s ease;
-  user-select: none;
-}
-
-.star-rating label:hover {
-  transform: scale(1.15);
-}
-
-/* Map cursor dla zalogowanych użytkowników */
-#map.clickable-map {
-  cursor: crosshair;
-}
-
-/* Toast customization */
-.toast-container {
-  z-index: 9999;
-}
-
-#successToast {
-  min-width: 300px;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Proximity info alert */
-#proximityInfo {
-  border-radius: 0.5rem;
-  font-size: 0.9rem;
-}
+{% block extra_js %}
+<script>
+  window.map = L.map('map').setView([54.3755425, 18.6088834], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19, minZoom: 3
+  }).addTo(window.map);
+</script>
+<script src="{% static 'js/map.js' %}"></script>
+{% endblock %}
