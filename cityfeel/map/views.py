@@ -3,11 +3,10 @@ from django.views.generic import TemplateView, DetailView
 from django.db.models import Avg, Count
 from django.urls import reverse_lazy
 from django.conf import settings
-from django.shortcuts import redirect
-from django.contrib import messages
 
 from emotions.models import EmotionPoint
 from map.models import Location
+from emotions.forms import CommentForm  # Ważny import
 
 
 class EmotionMapView(LoginRequiredMixin, TemplateView):
@@ -41,16 +40,16 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         location = self.object
 
-        # Publiczne emotion points
+        # Publiczne emotion points + komentarze
         public_points = (
             EmotionPoint.objects
             .filter(location=location, privacy_status='public')
             .select_related('user')
-            .prefetch_related('comments')
+            .prefetch_related('comments', 'comments__user')
             .order_by('-created_at')
         )
 
-        # Statystyki rozkładu ocen (1-5)
+        # Statystyki rozkładu ocen
         emotion_distribution = (
             EmotionPoint.objects
             .filter(location=location)
@@ -69,24 +68,7 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             'public_points': public_points,
             'emotion_distribution': emotion_distribution,
             'user_emotion_point': user_emotion_point,
+            'comment_form': CommentForm(),  # Przekazanie formularza do szablonu
         })
 
         return context
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        emotional_value = request.POST.get('emotional_value')
-        privacy_status = request.POST.get('privacy_status', 'public')
-
-        if emotional_value:
-            EmotionPoint.objects.update_or_create(
-                user=request.user,
-                location=self.object,
-                defaults={
-                    'emotional_value': emotional_value,
-                    'privacy_status': privacy_status
-                }
-            )
-            messages.success(request, 'Twoja ocena została zapisana!')
-        
-        return redirect('map:location_detail', pk=self.object.pk)
