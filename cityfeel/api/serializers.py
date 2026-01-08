@@ -316,4 +316,73 @@ class FriendshipSerializer(serializers.ModelSerializer):
         """
         Walidacja:
         1. Nie można zaprosić samego siebie.
-        2. Nie można
+        2. Nie można zaprosić jeśli relacja już istnieje (w dowolną stronę).
+        """
+        request = self.context['request']
+
+        # Walidacja przy tworzeniu (POST) - friend_id jest wymagane
+        if self.instance is None:
+            friend = attrs['friend']
+            user = request.user
+
+            if user == friend:
+                raise serializers.ValidationError("Nie możesz wysłać zaproszenia do samego siebie.")
+
+            # Sprawdź czy relacja już istnieje (w dowolnym kierunku)
+            existing = Friendship.objects.filter(
+                (Q(user=user) & Q(friend=friend)) |
+                (Q(user=friend) & Q(friend=user))
+            ).exists()
+
+            if existing:
+                raise serializers.ValidationError(
+                    "Relacja z tym użytkownikiem już istnieje (oczekująca lub zaakceptowana).")
+
+        return attrs
+
+    def create(self, validated_data):
+        # Ustaw zalogowanego użytkownika jako wysyłającego
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class FriendUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer do wyświetlania użytkownika na liście znajomych.
+    """
+    friendship_id = serializers.IntegerField(read_only=True)
+    friendship_since = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = CFUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'avatar', 'friendship_id', 'friendship_since']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Comment.
+    """
+    username = serializers.CharField(source='user.username', read_only=True)
+    point_id = serializers.PrimaryKeyRelatedField(
+        source='emotion_point',
+        queryset=EmotionPoint.objects.all(),
+        write_only=True,
+        error_messages={'does_not_exist': 'Podany punkt emocji nie istnieje.'}
+    )
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'username', 'content', 'created_at', 'point_id']
+        read_only_fields = ['id', 'username', 'created_at']
+        extra_kwargs = {
+            'content': {
+                'error_messages': {
+                    'blank': 'Treść komentarza nie może być pusta.',
+                    'required': 'Treść komentarza jest wymagana.'
+                }
+            }
+        }
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
