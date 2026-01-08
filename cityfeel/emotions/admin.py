@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EmotionPoint, Comment
+from .models import EmotionPoint, Comment, Photo
 
 
 @admin.register(EmotionPoint)
@@ -43,3 +43,8 @@ class CommentAdmin(admin.ModelAdmin):
         return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
 
     short_content.short_description = "Treść"
+
+
+@admin.register(Photo)
+class PhotoAdmin(admin.ModelAdmin):
+    list_display = ('location', 'created_at', 'caption')
