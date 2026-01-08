@@ -57,20 +57,18 @@ class LocationViewSet(ReadOnlyModelViewSet):
     filterset_class = LocationFilter
 
     def get_queryset(self):
-        """
-        Zwraca queryset z annotacją avg_emotional_value i emotion_points_count.
-        Średnia liczy ze WSZYSTKICH emotion_points (publicznych i prywatnych).
-        Lokalizacje bez emotion_points mają avg_emotional_value=null i count=0.
-        """
-        return (
-            Location.objects
-            .annotate(
-                avg_emotional_value=Avg('emotion_points__emotional_value'),
-                emotion_points_count=Count('emotion_points')
-            )
-            .prefetch_related('emotion_points__user')
-            .order_by('-avg_emotional_value', 'name')
-        )
+        queryset = Location.objects.all()
+
+        emotional_values = self.request.query_params.get('emotional_value')
+
+        if emotional_values:
+            values_list = emotional_values.split(',')
+            queryset = queryset.filter(emotion_points__emotional_value__in=values_list).distinct()
+
+        return queryset.annotate(
+            avg_emotional_value=Avg('emotion_points__emotional_value'),
+            emotion_points_count=Count('emotion_points')
+        ).order_by('-avg_emotional_value', 'name')
 
 
 class FriendshipViewSet(mixins.CreateModelMixin,

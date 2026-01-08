@@ -25,6 +25,9 @@
   let debounceTimer = null;
   let currentBounds = null;
 
+  // Stan filtrów
+  let activeFilters = [];
+
   // Stan dla dodawania emocji
   let addEmotionModal = null;
   let isUserAuthenticated = false;
@@ -48,6 +51,8 @@
       initAddEmotionFeature();
     }
 
+    initFilters();
+
     // Cluster group
     markerClusterGroup = L.markerClusterGroup({
       maxClusterRadius: 50,
@@ -65,6 +70,67 @@
     // Pierwsze załadowanie
     loadVisibleLocations();
   }
+
+  // === OBSŁUGA FILTRÓW ===
+function initFilters() {
+    const filtersContainer = document.getElementById('map-filters');
+    if (!filtersContainer) return;
+
+    const buttons = filtersContainer.querySelectorAll('.filter-btn');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        // Zapobiegaj propagacji, żeby nie klikać mapy pod spodem
+        e.stopPropagation();
+
+        const btn = e.currentTarget;
+        const value = parseInt(btn.dataset.value, 10);
+
+        // 1. Zaktualizuj stan (tablica activeFilters)
+        if (activeFilters.includes(value)) {
+          // Usuń z filtrów
+          activeFilters = activeFilters.filter(v => v !== value);
+          toggleFilterButtonStyle(btn, false);
+        } else {
+          // Dodaj do filtrów
+          activeFilters.push(value);
+          toggleFilterButtonStyle(btn, true);
+        }
+
+        // 2. Przeładuj mapę z nowymi filtrami
+        // force=true wymusza odświeżenie nawet jak nie ruszyliśmy mapą
+        loadVisibleLocations(true);
+      });
+    });
+  }
+
+  // Funkcja zmieniająca wygląd przycisku (Outline <-> Solid)
+  function toggleFilterButtonStyle(btn, isActive) {
+    // Pobieramy klasy Bootstrapa na podstawie koloru (np. btn-outline-danger -> btn-danger)
+    const classList = Array.from(btn.classList);
+    const outlineClass = classList.find(c => c.startsWith('btn-outline-'));
+
+    if (outlineClass) {
+      const solidClass = outlineClass.replace('btn-outline-', 'btn-');
+
+      if (isActive) {
+        btn.classList.remove(outlineClass);
+        btn.classList.add(solidClass, 'text-white', 'shadow'); // Dodajemy cień i biały tekst
+      } else {
+      }
+    } else {
+        // Jeśli przycisk jest już "solid", to znaczy że go odznaczamy
+        const solidClass = classList.find(c => c.startsWith('btn-') && !c.startsWith('btn-outline-') && c !== 'btn-sm');
+        if (solidClass) {
+             const outlineClass = solidClass.replace('btn-', 'btn-outline-');
+             if (!isActive) {
+                 btn.classList.remove(solidClass, 'text-white', 'shadow');
+                 btn.classList.add(outlineClass);
+             }
+        }
+    }
+  }
+
 
   // === CLUSTER ICON ===
   function createClusterIcon(cluster) {
@@ -118,12 +184,20 @@
     // Pobierz API URL z data attribute (generowany przez {% url 'api:locations-list' %})
     // Fallback '/api/locations/' używany tylko w razie problemów z template
     const apiUrl = document.getElementById('map').dataset.apiUrl || '/api/locations/';
-    const url = `${apiUrl}?bbox=${bbox}`;
+    let url = `${apiUrl}?bbox=${bbox}`;
+
+    // Jeśli są aktywne filtry, dodaj je do URL
+    if (activeFilters.length > 0) {
+        url += `&emotional_value=${activeFilters.join(',')}`;
+    }
 
     fetchLocations(url);
   }
 
   function fetchLocations(url) {
+    // Wizualny feedback że coś się dzieje
+    document.body.style.cursor = 'wait';
+
     fetch(url, {
       credentials: 'same-origin',
       headers: {
@@ -141,7 +215,10 @@
       })
       .catch(error => {
         console.error('Error fetching locations:', error);
-        showError('Nie udało się pobrać lokalizacji.');
+        // Nie pokazujemy alertu przy każdym ruchu mapy, tylko w konsoli
+      })
+      .finally(() => {
+        document.body.style.cursor = 'default';
       });
   }
 

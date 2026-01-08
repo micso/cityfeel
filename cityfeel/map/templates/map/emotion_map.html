@@ -6,6 +6,47 @@
 {% block main_attrs %}{% endblock %}
 
 {% block content %}
+
+<div style="position: relative; height: calc(100vh - 56px); width: 100%; overflow: hidden;">
+
+    <div id="map"
+         style="height: 100%; width: 100%; z-index: 1;"
+         data-api-url="{% url 'api:locations-list' %}"
+         data-emotion-points-url="{% url 'api:emotion_points-list' %}"
+         data-user-authenticated="{{ user.is_authenticated|lower }}"
+         data-proximity-radius="{{ settings.CITYFEEL_LOCATION_PROXIMITY_RADIUS }}">
+    </div>
+
+<div id="map-filters"
+         class="d-flex justify-content-center align-items-start gap-2 pt-3"
+         style="position: absolute; top: 0; left: 0; width: 100%; z-index: 1000; pointer-events: none;">
+
+        <div style="pointer-events: auto; background: rgba(255, 255, 255, 0.9); padding: 8px 15px; border-radius: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span class="fw-bold text-secondary small text-uppercase me-2 d-none d-sm-inline" style="vertical-align: middle;">Filtruj:</span>
+
+            <button class="btn btn-sm btn-outline-emo-1 filter-btn rounded-pill fw-bold" data-value="1">
+                😡
+            </button>
+
+            <button class="btn btn-sm btn-outline-emo-2 filter-btn rounded-pill fw-bold" data-value="2">
+                😕
+            </button>
+
+            <button class="btn btn-sm btn-outline-emo-3 filter-btn rounded-pill fw-bold" data-value="3">
+                😐
+            </button>
+
+            <button class="btn btn-sm btn-outline-emo-4 filter-btn rounded-pill fw-bold" data-value="4">
+                🙂
+            </button>
+
+            <button class="btn btn-sm btn-outline-emo-5 filter-btn rounded-pill fw-bold" data-value="5">
+                😍
+            </button>
+        </div>
+    </div>
+
+</div>
 <!-- Full-screen map container -->
 <div id="map"
      style="height: calc(100vh - 56px); width: 100%;"
