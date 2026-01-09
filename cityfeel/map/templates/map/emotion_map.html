@@ -98,11 +98,6 @@
           </select>
         </div>
 
-        <div class="mb-3">
-          <label for="emotionComment" class="form-label fw-semibold">Komentarz (opcjonalnie)</label>
-          <textarea class="form-control" id="emotionComment" rows="2" placeholder="Napisz co myślisz o tym miejscu..."></textarea>
-        </div>
-
         <div class="text-muted small">
           <strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span>
         </div>
@@ -133,6 +128,11 @@
 
 {% block extra_js %}
 <script>
+  // Definiujemy granice świata, aby zablokować "world wrapping" (powielanie mapy)
+  var southWest = L.latLng(-90, -180);
+  var northEast = L.latLng(90, 180);
+  var bounds = L.latLngBounds(southWest, northEast);
+
   // Initialize Leaflet map (global variable for map.js)
   window.map = L.map('map', {
     worldCopyJump: true  // Automatycznie normalizuje pozycję mapy po okrążeniu Ziemi
@@ -142,7 +142,9 @@
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
-    minZoom: 3
+    minZoom: 3,
+    noWrap: true, // Kluczowe: nie powielaj kafelków w poziomie
+    bounds: bounds
   }).addTo(window.map);
 </script>
 
