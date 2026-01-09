@@ -6,7 +6,8 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.contrib import messages
 
-from emotions.models import EmotionPoint
+from emotions.models import EmotionPoint, Photo
+from emotions.forms import PhotoForm
 from map.models import Location
 
 
@@ -25,7 +26,7 @@ class EmotionMapView(LoginRequiredMixin, TemplateView):
 
 
 class LocationDetailView(LoginRequiredMixin, DetailView):
-    """Widok szczegółowy lokalizacji z publicznymi emotion points i statystykami."""
+    """Widok szczegółowy lokalizacji z publicznymi emotion points, zdjęciami i statystykami."""
     model = Location
     template_name = 'map/location_detail.html'
     context_object_name = 'location'
@@ -50,6 +51,9 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             .order_by('-created_at')
         )
 
+        # Zdjęcia lokalizacji
+        photos = location.photos.all().order_by('-created_at')
+
         # Statystyki rozkładu ocen (1-5)
         emotion_distribution = (
             EmotionPoint.objects
@@ -67,6 +71,8 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 
         context.update({
             'public_points': public_points,
+            'photos': photos,
+            'photo_form': PhotoForm(),
             'emotion_distribution': emotion_distribution,
             'user_emotion_point': user_emotion_point,
         })
@@ -75,6 +81,21 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
+        
+        # Obsługa dodawania zdjęcia
+        if 'image' in request.FILES:
+            photo_form = PhotoForm(request.POST, request.FILES)
+            if photo_form.is_valid():
+                photo = photo_form.save(commit=False)
+                photo.location = self.object
+                photo.save()
+                messages.success(request, 'Zdjęcie zostało dodane!')
+            else:
+                for error in photo_form.errors.values():
+                    messages.error(request, error)
+            return redirect('map:location_detail', pk=self.object.pk)
+
+        # Obsługa dodawania oceny
         emotional_value = request.POST.get('emotional_value')
         privacy_status = request.POST.get('privacy_status', 'public')
 
