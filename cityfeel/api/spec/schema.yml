@@ -3,6 +3,30 @@ info:
   title: ''
   version: 0.0.0
 paths:
+  /api/comments/:
+    post:
+      operationId: comments_create
+      description: |-
+        Dodaje nowy komentarz do punktu emocji.
+        Wymaga: content, point_id.
+        Automatycznie przypisuje zalogowanego użytkownika.
+      tags:
+      - comments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Comment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
   /api/emotion-points/:
     get:
       operationId: emotion_points_list
@@ -24,8 +48,6 @@ paths:
           type: array
           items:
             type: integer
-            maximum: 5
-            minimum: 1
         description: Wiele wartości można rozdzielić przecinkami
         explode: false
         style: form
@@ -424,6 +446,17 @@ paths:
         schema:
           type: string
       - in: query
+        name: emotional_value
+        schema:
+          type: array
+          items:
+            type: integer
+            maximum: 5
+            minimum: 1
+        description: Wiele wartości można rozdzielić przecinkami
+        explode: false
+        style: form
+      - in: query
         name: lat
         schema:
           type: number
@@ -635,6 +668,33 @@ paths:
           description: ''
 components:
   schemas:
+    Comment:
+      type: object
+      description: Serializer dla modelu Comment.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        content:
+          type: string
+          description: Treść komentarza
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Data utworzenia komentarza
+        point_id:
+          type: integer
+          writeOnly: true
+      required:
+      - content
+      - created_at
+      - id
+      - point_id
+      - username
     EmotionPoint:
       type: object
       properties:
