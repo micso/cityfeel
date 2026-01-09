@@ -98,6 +98,11 @@
           </select>
         </div>
 
+        <div class="mb-3">
+          <label for="emotionComment" class="form-label fw-semibold">Komentarz (opcjonalnie)</label>
+          <textarea class="form-control" id="emotionComment" rows="2" placeholder="Napisz co myślisz o tym miejscu..."></textarea>
+        </div>
+
         <div class="text-muted small">
           <strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span>
         </div>
@@ -141,6 +146,5 @@
   }).addTo(window.map);
 </script>
 
-<!-- External map logic -->
 <script src="{% static 'js/map.js' %}"></script>
 {% endblock %}
