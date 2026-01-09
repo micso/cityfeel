@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from django.contrib.gis.geos import Point, Polygon
 from map.models import Location
@@ -14,11 +15,12 @@ class LocationFilter(filters.FilterSet):
     - name: filtrowanie po nazwie (case-insensitive contains)
     - lat, lon, radius: filtrowanie po promieniu (radius w metrach)
     - bbox: filtrowanie po bounding box (format: lon_min,lat_min,lon_max,lat_max)
+    - emotional_value: filtrowanie po ŚREDNIEJ ocenie (przedziały)
     """
 
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
 
-    emotional_value = filters.BaseInFilter(field_name='emotion_points__emotional_value')
+    emotional_value = filters.BaseInFilter(method='filter_avg_range')
 
     # Filtry dla radius search
     lat = filters.NumberFilter(method='filter_radius')
@@ -31,6 +33,38 @@ class LocationFilter(filters.FilterSet):
     class Meta:
         model = Location
         fields = ['name', 'lat', 'lon', 'radius', 'bbox', 'emotional_value']
+
+    def filter_avg_range(self, queryset, name, value):
+        """
+        Wersja PODŁOGA (Floor):
+        2.5 -> wpada do 2
+        2.99 -> wpada do 2
+        3.0 -> wpada do 3
+        """
+        if not value:
+            return queryset
+
+        query = Q()
+
+        for val in value:
+            try:
+                rating = int(val)
+            except (ValueError, TypeError):
+                continue
+
+            if rating == 5:
+                # Tylko idealne 5.0 i w górę
+                query |= Q(avg_emotional_value__gte=5.0)
+            else:
+                # Sztywna rama: od X.0 do (X+1).0
+                # Dla 3: avg >= 3.0 ORAZ avg < 4.0
+                # 2.5 tutaj nie wejdzie, bo jest mniejsze od 3.0
+                query |= Q(avg_emotional_value__gte=rating, avg_emotional_value__lt=rating + 1)
+
+        if not query:
+            return queryset
+
+        return queryset.filter(query)
 
     def filter_radius(self, queryset, name, value):
         """
@@ -107,7 +141,7 @@ class EmotionPointFilter(filters.FilterSet):
     - emotional_value: filtrowanie po wielu wartościach (np. ?emotional_value=1,2,3)
     """
 
-    emotional_value = NumberInFilter(field_name='emotional_value', lookup_expr='in')
+    emotional_value = filters.BaseInFilter(method='filter_avg_range')
 
     class Meta:
         model = EmotionPoint
