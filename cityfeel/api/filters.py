@@ -36,11 +36,10 @@ class LocationFilter(filters.FilterSet):
 
     def filter_avg_range(self, queryset, name, value):
         """
-        Wersja PODŁOGA (Floor):
-        2.5 -> wpada do 2
-        2.99 -> wpada do 2
-        3.0 -> wpada do 3
-        """
+                Logika PODŁOGI (Floor) dla LOKALIZACJI:
+                2.5 -> wpada do 2
+                3.0 -> wpada do 3
+                """
         if not value:
             return queryset
 
@@ -53,12 +52,8 @@ class LocationFilter(filters.FilterSet):
                 continue
 
             if rating == 5:
-                # Tylko idealne 5.0 i w górę
                 query |= Q(avg_emotional_value__gte=5.0)
             else:
-                # Sztywna rama: od X.0 do (X+1).0
-                # Dla 3: avg >= 3.0 ORAZ avg < 4.0
-                # 2.5 tutaj nie wejdzie, bo jest mniejsze od 3.0
                 query |= Q(avg_emotional_value__gte=rating, avg_emotional_value__lt=rating + 1)
 
         if not query:
@@ -141,7 +136,7 @@ class EmotionPointFilter(filters.FilterSet):
     - emotional_value: filtrowanie po wielu wartościach (np. ?emotional_value=1,2,3)
     """
 
-    emotional_value = filters.BaseInFilter(method='filter_avg_range')
+    emotional_value = NumberInFilter(field_name='emotional_value', lookup_expr='in')
 
     class Meta:
         model = EmotionPoint
