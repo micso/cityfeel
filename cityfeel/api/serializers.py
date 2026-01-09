@@ -186,12 +186,15 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             location_name = custom_location_name if custom_location_name else f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
             location = Location.objects.create(name=location_name, coordinates=point)
 
+        # [FIX] Użycie .get() dla privacy_status z wartością domyślną 'public'
+        privacy_status = validated_data.get('privacy_status', 'public')
+
         emotion_point, _ = EmotionPoint.objects.update_or_create(
             user=user,
             location=location,
             defaults={
                 'emotional_value': validated_data['emotional_value'],
-                'privacy_status': validated_data['privacy_status']
+                'privacy_status': privacy_status
             }
         )
 
@@ -199,6 +202,7 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             existing_comment = Comment.objects.filter(user=user, location=location, emotion_point=emotion_point).first()
             if existing_comment:
                 existing_comment.content = comment_content.strip()
+                existing_comment.privacy_status = privacy_status  # Aktualizuj też prywatność
                 existing_comment.save()
             else:
                 Comment.objects.create(
@@ -206,7 +210,7 @@ class EmotionPointSerializer(serializers.ModelSerializer):
                     location=location,
                     emotion_point=emotion_point,
                     content=comment_content.strip(),
-                    privacy_status=validated_data['privacy_status']
+                    privacy_status=privacy_status
                 )
 
         return emotion_point
@@ -251,7 +255,6 @@ class FriendUserSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-    # [FIX] Zmieniono point_id na location_id, bo model Comment wymaga location
     location_id = serializers.PrimaryKeyRelatedField(
         source='location',
         queryset=Location.objects.all(),
@@ -269,5 +272,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
-        # Tworzymy komentarz "samodzielny" (bez emotion_point)
+        # Domyślnie public jeśli nie podano
+        if 'privacy_status' not in validated_data:
+            validated_data['privacy_status'] = 'public'
         return super().create(validated_data)
