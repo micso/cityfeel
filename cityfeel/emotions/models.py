@@ -6,6 +6,16 @@ from map.models import Location
 
 
 class EmotionPoint(models.Model):
+    """
+    Punkt emocji - opinia użytkownika o lokalizacji.
+    Reprezentuje emocje użytkowników związane z konkretnymi miejscami w mieście.
+
+    Model prywatności:
+    - Wszystkie EmotionPoints (publiczne i prywatne) są widoczne na mapie i wpływają na statystyki lokalizacji
+    - public: Pokazuje autora (imię i nazwisko, widoczne na profilu użytkownika)
+    - private: Anonimowe - nie pokazuje kto je dodał (nie widoczne na profilu użytkownika)
+    """
+    # Emotional value range constants
     MIN_EMOTIONAL_VALUE = 1
     MAX_EMOTIONAL_VALUE = 5
 
@@ -17,39 +27,64 @@ class EmotionPoint(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='emotion_points'
+        related_name='emotion_points',
+        help_text="Użytkownik, który utworzył ten punkt emocji"
     )
+
     location = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
-        related_name='emotion_points'
+        related_name='emotion_points',
+        help_text="Lokalizacja powiązana z tą emocją"
     )
+
     emotional_value = models.PositiveSmallIntegerField(
         validators=[
             MinValueValidator(MIN_EMOTIONAL_VALUE),
             MaxValueValidator(MAX_EMOTIONAL_VALUE)
-        ]
+        ],
+        help_text=f"Ocena emocjonalna od {MIN_EMOTIONAL_VALUE} (negatywna) do {MAX_EMOTIONAL_VALUE} (pozytywna)"
     )
+
     privacy_status = models.CharField(
         max_length=10,
         choices=PRIVACY_CHOICES,
-        default='public'
+        default='public',
+        help_text="Status prywatności: 'public' (z imieniem i nazwiskiem, widoczne na profilu) lub 'private' (anonimowe, nie widoczne na profilu). Wszystkie emocje są widoczne na mapie."
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Kiedy ten punkt emocji został utworzony"
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Kiedy ten punkt emocji był ostatnio aktualizowany"
+    )
 
     class Meta:
         verbose_name = "Punkt emocji"
         verbose_name_plural = "Punkty emocji"
         db_table = "emotions_emotion_point"
         unique_together = [('user', 'location')]
+        # [ZACHOWANO] Indeksy wydajnościowe z oryginalnego pliku
+        indexes = [
+            models.Index(fields=['user', 'created_at'], name='emotions_user_created_idx'),
+            models.Index(fields=['location', 'emotional_value'], name='emotions_loc_value_idx'),
+            models.Index(fields=['privacy_status'], name='emotions_privacy_idx'),
+        ]
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.location.name} ({self.emotional_value})"
+        return f"{self.user.username} - {self.location.name} ({self.emotional_value}/{self.MAX_EMOTIONAL_VALUE})"
 
 
 class Comment(models.Model):
+    """
+    Komentarz użytkownika do lokalizacji.
+    Może być powiązany z oceną (EmotionPoint) lub być samodzielny.
+    """
     PRIVACY_CHOICES = [
         ('public', 'Publiczny'),
         ('private', 'Prywatny'),
@@ -61,12 +96,14 @@ class Comment(models.Model):
         related_name='comments',
         help_text="Autor komentarza"
     )
+    # [NOWE] Powiązanie z lokalizacją (wymagane przez nową logikę)
     location = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
         related_name='comments',
         help_text="Lokalizacja, której dotyczy komentarz"
     )
+    # [ZMIANA] Opcjonalne powiązanie z oceną (dla komentarzy będących częścią opinii)
     emotion_point = models.ForeignKey(
         EmotionPoint,
         on_delete=models.CASCADE,
@@ -75,14 +112,20 @@ class Comment(models.Model):
         blank=True,
         help_text="Powiązana ocena (jeśli komentarz jest częścią opinii)"
     )
-    content = models.TextField(help_text="Treść komentarza")
+    content = models.TextField(
+        help_text="Treść komentarza"
+    )
+    # [NOWE] Status prywatności komentarza
     privacy_status = models.CharField(
         max_length=10,
         choices=PRIVACY_CHOICES,
         default='public',
         help_text="Status prywatności komentarza"
     )
-    created_at = models.DateTimeField(auto_now_add=True, help_text="Data utworzenia komentarza")
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Data utworzenia komentarza"
+    )
 
     class Meta:
         verbose_name = "Komentarz"
@@ -102,12 +145,12 @@ def validate_image_size(image):
 
 
 class Photo(models.Model):
-    # [NOWE] Opcje prywatności
     PRIVACY_CHOICES = [
         ('public', 'Publiczny'),
         ('private', 'Prywatny'),
     ]
 
+    # [NOWE] Autor zdjęcia
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -128,7 +171,7 @@ class Photo(models.Model):
     )
     caption = models.CharField(max_length=255, blank=True)
 
-    # [NOWE] Pole privacy_status
+    # [NOWE] Prywatność zdjęcia
     privacy_status = models.CharField(
         max_length=10,
         choices=PRIVACY_CHOICES,
