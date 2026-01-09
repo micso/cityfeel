@@ -68,7 +68,6 @@ class EmotionPoint(models.Model):
         verbose_name_plural = "Punkty emocji"
         db_table = "emotions_emotion_point"
         unique_together = [('user', 'location')]
-        # [ZACHOWANO] Indeksy wydajnościowe z oryginalnego pliku
         indexes = [
             models.Index(fields=['user', 'created_at'], name='emotions_user_created_idx'),
             models.Index(fields=['location', 'emotional_value'], name='emotions_loc_value_idx'),
@@ -96,14 +95,15 @@ class Comment(models.Model):
         related_name='comments',
         help_text="Autor komentarza"
     )
-    # [NOWE] Powiązanie z lokalizacją (wymagane przez nową logikę)
+
+    # [WAŻNE] Pole wymagane przez logikę testów i nową architekturę
     location = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
         related_name='comments',
         help_text="Lokalizacja, której dotyczy komentarz"
     )
-    # [ZMIANA] Opcjonalne powiązanie z oceną (dla komentarzy będących częścią opinii)
+
     emotion_point = models.ForeignKey(
         EmotionPoint,
         on_delete=models.CASCADE,
@@ -112,16 +112,19 @@ class Comment(models.Model):
         blank=True,
         help_text="Powiązana ocena (jeśli komentarz jest częścią opinii)"
     )
+
     content = models.TextField(
         help_text="Treść komentarza"
     )
-    # [NOWE] Status prywatności komentarza
+
+    # [WAŻNE] Pole prywatności komentarza
     privacy_status = models.CharField(
         max_length=10,
         choices=PRIVACY_CHOICES,
         default='public',
         help_text="Status prywatności komentarza"
     )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text="Data utworzenia komentarza"
@@ -145,12 +148,15 @@ def validate_image_size(image):
 
 
 class Photo(models.Model):
+    """
+    Zdjęcie dodane przez użytkownika do lokalizacji.
+    """
     PRIVACY_CHOICES = [
         ('public', 'Publiczny'),
         ('private', 'Prywatny'),
     ]
 
-    # [NOWE] Autor zdjęcia
+    # [WAŻNE] Autor zdjęcia (niezbędny dla logiki prywatności)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -159,19 +165,22 @@ class Photo(models.Model):
         null=True,
         blank=True
     )
+
     location = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
         related_name='photos',
         help_text="Lokalizacja, której dotyczy zdjęcie"
     )
+
     image = models.ImageField(
         upload_to='location_photos/%Y/%m/%d/',
         validators=[validate_image_size]
     )
+
     caption = models.CharField(max_length=255, blank=True)
 
-    # [NOWE] Prywatność zdjęcia
+    # [WAŻNE] Status prywatności zdjęcia
     privacy_status = models.CharField(
         max_length=10,
         choices=PRIVACY_CHOICES,

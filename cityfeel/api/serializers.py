@@ -61,31 +61,36 @@ class PointField(serializers.Field):
         # Walidacja latitude
         if latitude is None:
             raise serializers.ValidationError({'latitude': 'Pole latitude jest wymagane.'})
+
         try:
             latitude = float(latitude)
         except (TypeError, ValueError):
             raise serializers.ValidationError({'latitude': 'Nieprawidłowy format szerokości geograficznej.'})
 
-        if not -90 <= latitude <= 90:
+        if latitude < -90.0 or latitude > 90.0:
             raise serializers.ValidationError({'latitude': 'Szerokość geograficzna musi być w zakresie -90 do 90.'})
 
         # Walidacja longitude
         if longitude is None:
             raise serializers.ValidationError({'longitude': 'Pole longitude jest wymagane.'})
+
         try:
             longitude = float(longitude)
         except (TypeError, ValueError):
             raise serializers.ValidationError({'longitude': 'Nieprawidłowy format długości geograficznej.'})
 
-        if not -180 <= longitude <= 180:
+        if longitude < -180.0 or longitude > 180.0:
             raise serializers.ValidationError({'longitude': 'Długość geograficzna musi być w zakresie -180 do 180.'})
 
+        # Utwórz PostGIS Point (longitude FIRST, latitude SECOND - standard WGS84)
         return Point(longitude, latitude, srid=4326)
 
 
 class LocationSerializer(serializers.ModelSerializer):
     """
     Serializer dla modelu Location z obsługą PostGIS Point.
+    Używa custom PointField do konwersji współrzędnych.
+    Może być używany samodzielnie w przyszłych endpointach.
     """
     coordinates = PointField()
 
@@ -95,9 +100,13 @@ class LocationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
         extra_kwargs = {
             'name': {
-                'required': False,
+                'required': False,  # Opcjonalne, będzie auto-generowane
                 'allow_blank': False,
                 'max_length': 200,
+                'error_messages': {
+                    'max_length': 'Nazwa lokalizacji nie może być dłuższa niż 200 znaków.',
+                    'blank': 'Nazwa lokalizacji nie może być pusta.',
+                }
             }
         }
 
@@ -105,6 +114,7 @@ class LocationSerializer(serializers.ModelSerializer):
 class LocationListSerializer(serializers.ModelSerializer):
     """
     Serializer dla endpointu GET /api/locations/.
+    Rozszerzony o latest_comment i licznik komentarzy.
     """
     coordinates = PointField()
     avg_emotional_value = serializers.SerializerMethodField()
@@ -121,49 +131,72 @@ class LocationListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    @extend_schema_field({
+        'type': 'number',
+        'nullable': True,
+        'description': 'Średnia wartość emocjonalna (1-5) ze wszystkich ocen.',
+        'example': 4.2
+    })
     def get_avg_emotional_value(self, obj):
         return getattr(obj, 'avg_emotional_value', None)
 
     @extend_schema_field({'type': 'integer'})
     def get_comments_count(self, obj):
+        """Liczy komentarze tylko z publicznych punktów."""
         try:
-            return obj.comments.count()
+            return Comment.objects.filter(
+                emotion_point__location=obj,
+                emotion_point__privacy_status='public'
+            ).count()
         except Exception:
             return 0
 
     @extend_schema_field({
         'type': 'object',
         'nullable': True,
-        'description': 'Ostatni komentarz z uwzględnieniem prywatności.',
+        'description': 'Ostatni publiczny komentarz dodany w tej lokalizacji.',
         'properties': {
             'username': {'type': 'string'},
             'content': {'type': 'string'},
-            'emotional_value': {'type': 'integer', 'nullable': True}
+            'emotional_value': {'type': 'integer'}
+        },
+        'example': {
+            'username': 'JanKowalski',
+            'content': 'Bardzo ładne miejsce, polecam!',
+            'emotional_value': 5
         }
     })
     def get_latest_comment(self, obj):
         try:
-            comment = obj.comments.select_related('user', 'emotion_point').order_by('-created_at').first()
+            comment = (
+                Comment.objects
+                .filter(
+                    emotion_point__location=obj,
+                    emotion_point__privacy_status='public'
+                )
+                .exclude(content__isnull=True)
+                .exclude(content__exact='')
+                .select_related('user', 'emotion_point')
+                .order_by('-created_at')
+                .first()
+            )
+
             if comment:
                 content = comment.content
-                username = "Anonim" if comment.privacy_status == 'private' else comment.user.username
-
-                data = {
-                    'username': username,
+                return {
+                    'username': comment.user.username,
                     'content': content[:100] + '...' if len(content) > 100 else content,
+                    'emotional_value': comment.emotion_point.emotional_value
                 }
-                if comment.emotion_point:
-                    data['emotional_value'] = comment.emotion_point.emotional_value
-                return data
-        except Exception:
+        except Exception as e:
             return None
+
         return None
 
 
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     location = LocationSerializer()
-    comment = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = EmotionPoint
@@ -173,7 +206,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             'emotional_value',
             'privacy_status',
             'username',
-            'comment',
         ]
         read_only_fields = ['id']
         extra_kwargs = {
@@ -193,60 +225,85 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        """
+        Tworzy lub aktualizuje EmotionPoint z proximity matching dla Location.
+        """
+        # Wyciągnij nested location data
         location_data = validated_data.pop('location')
-        comment_content = validated_data.pop('comment', None)
-        point = location_data['coordinates']
+        point = location_data['coordinates']  # PostGIS Point z PointField
         custom_location_name = location_data.get('name', None)
+
         user = self.context['request'].user
 
-        proximity_meters = getattr(settings, 'CITYFEEL_LOCATION_PROXIMITY_RADIUS', 50)
-        proximity_degrees = proximity_meters / 111320.0
+        # Pobierz promień z settings
+        proximity_radius_meters = getattr(
+            settings,
+            'CITYFEEL_LOCATION_PROXIMITY_RADIUS',
+            50  # domyślnie 50 metrów
+        )
 
+        # Konwertuj metry na stopnie (przybliżenie)
+        proximity_radius_degrees = proximity_radius_meters / 111320.0
+
+        # Proximity matching: znajdź najbliższą Location w promieniu
         nearby_location = (
             Location.objects
-            .filter(coordinates__dwithin=(point, proximity_degrees))
+            .filter(coordinates__dwithin=(point, proximity_radius_degrees))
             .annotate(distance=Distance('coordinates', point))
             .order_by('distance')
             .first()
         )
 
         if nearby_location:
+            # Użyj istniejącej lokalizacji
             location = nearby_location
         else:
-            location_name = custom_location_name if custom_location_name else f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
-            location = Location.objects.create(name=location_name, coordinates=point)
-
-        privacy_status = validated_data.get('privacy_status', 'public')
-
-        emotion_point, _ = EmotionPoint.objects.update_or_create(
-            user=user,
-            location=location,
-            defaults={
-                'emotional_value': validated_data['emotional_value'],
-                'privacy_status': privacy_status
-            }
-        )
-
-        if comment_content and comment_content.strip():
-            existing_comment = Comment.objects.filter(user=user, location=location, emotion_point=emotion_point).first()
-            if existing_comment:
-                existing_comment.content = comment_content.strip()
-                existing_comment.privacy_status = privacy_status
-                existing_comment.save()
+            # Utwórz nową lokalizację
+            if custom_location_name:
+                location_name = custom_location_name
             else:
-                Comment.objects.create(
-                    user=user,
-                    location=location,
-                    emotion_point=emotion_point,
-                    content=comment_content.strip(),
-                    privacy_status=privacy_status
-                )
+                location_name = f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
+
+            location = Location.objects.create(
+                name=location_name,
+                coordinates=point
+            )
+
+        # Sprawdź czy użytkownik już ma EmotionPoint dla tej Location
+        try:
+            emotion_point = EmotionPoint.objects.get(user=user, location=location)
+
+            # Aktualizuj istniejący punkt
+            emotion_point.emotional_value = validated_data.get(
+                'emotional_value',
+                emotion_point.emotional_value
+            )
+            emotion_point.privacy_status = validated_data.get(
+                'privacy_status',
+                emotion_point.privacy_status
+            )
+            emotion_point.save()
+
+        except EmotionPoint.DoesNotExist:
+            # Utwórz nowy punkt
+            emotion_point = EmotionPoint.objects.create(
+                user=user,
+                location=location,
+                **validated_data
+            )
 
         return emotion_point
 
 
 class FriendshipSerializer(serializers.ModelSerializer):
-    friend_id = serializers.PrimaryKeyRelatedField(source='friend', queryset=CFUser.objects.all(), write_only=True)
+    """
+    Serializer dla modelu Friendship (zaproszenia do znajomych).
+    """
+    friend_id = serializers.PrimaryKeyRelatedField(
+        source='friend',
+        queryset=CFUser.objects.all(),
+        write_only=True
+    )
     user = serializers.StringRelatedField(read_only=True)
     friend = serializers.StringRelatedField(read_only=True)
 
@@ -256,24 +313,43 @@ class FriendshipSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'friend', 'created_at']
 
     def validate(self, attrs):
+        """
+        Walidacja:
+        1. Nie można zaprosić samego siebie.
+        2. Nie można zaprosić jeśli relacja już istnieje (w dowolną stronę).
+        """
         request = self.context['request']
+
+        # Walidacja przy tworzeniu (POST) - friend_id jest wymagane
         if self.instance is None:
             friend = attrs['friend']
             user = request.user
+
             if user == friend:
                 raise serializers.ValidationError("Nie możesz wysłać zaproszenia do samego siebie.")
-            if Friendship.objects.filter(
-                    (Q(user=user) & Q(friend=friend)) | (Q(user=friend) & Q(friend=user))).exists():
+
+            # Sprawdź czy relacja już istnieje (w dowolnym kierunku)
+            existing = Friendship.objects.filter(
+                (Q(user=user) & Q(friend=friend)) |
+                (Q(user=friend) & Q(friend=user))
+            ).exists()
+
+            if existing:
                 raise serializers.ValidationError(
                     "Relacja z tym użytkownikiem już istnieje (oczekująca lub zaakceptowana).")
+
         return attrs
 
     def create(self, validated_data):
+        # Ustaw zalogowanego użytkownika jako wysyłającego
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
 
 
 class FriendUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer do wyświetlania użytkownika na liście znajomych.
+    """
     friendship_id = serializers.IntegerField(read_only=True)
     friendship_since = serializers.DateTimeField(read_only=True)
 
@@ -283,24 +359,36 @@ class FriendUserSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Comment.
+    """
     username = serializers.CharField(source='user.username', read_only=True)
-    location_id = serializers.PrimaryKeyRelatedField(
-        source='location',
-        queryset=Location.objects.all(),
+    point_id = serializers.PrimaryKeyRelatedField(
+        source='emotion_point',
+        queryset=EmotionPoint.objects.all(),
         write_only=True,
-        error_messages={'does_not_exist': 'Podana lokalizacja nie istnieje.'}
+        error_messages={'does_not_exist': 'Podany punkt emocji nie istnieje.'}
     )
 
     class Meta:
         model = Comment
-        fields = ['id', 'username', 'content', 'created_at', 'location_id', 'privacy_status']
+        fields = ['id', 'username', 'content', 'created_at', 'point_id']
         read_only_fields = ['id', 'username', 'created_at']
         extra_kwargs = {
-            'content': {'error_messages': {'blank': 'Treść nie może być pusta.'}}
+            'content': {
+                'error_messages': {
+                    'blank': 'Treść komentarza nie może być pusta.',
+                    'required': 'Treść komentarza jest wymagana.'
+                }
+            }
         }
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
-        if 'privacy_status' not in validated_data:
-            validated_data['privacy_status'] = 'public'
+
+        # FIX: Automatyczne przypisanie location z EmotionPoint
+        # Jest to wymagane, ponieważ model Comment ma pole location NOT NULL
+        if 'emotion_point' in validated_data:
+            validated_data['location'] = validated_data['emotion_point'].location
+
         return super().create(validated_data)
