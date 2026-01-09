@@ -66,7 +66,6 @@ class PointField(serializers.Field):
         except (TypeError, ValueError):
             raise serializers.ValidationError({'latitude': 'Nieprawidłowy format szerokości geograficznej.'})
 
-        # [FIX] Walidacja zakresu latitude
         if not -90 <= latitude <= 90:
             raise serializers.ValidationError({'latitude': 'Szerokość geograficzna musi być w zakresie -90 do 90.'})
 
@@ -78,7 +77,6 @@ class PointField(serializers.Field):
         except (TypeError, ValueError):
             raise serializers.ValidationError({'longitude': 'Nieprawidłowy format długości geograficznej.'})
 
-        # [FIX] Walidacja zakresu longitude
         if not -180 <= longitude <= 180:
             raise serializers.ValidationError({'longitude': 'Długość geograficzna musi być w zakresie -180 do 180.'})
 
