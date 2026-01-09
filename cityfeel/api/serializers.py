@@ -58,6 +58,7 @@ class PointField(serializers.Field):
         latitude = data.get('latitude')
         longitude = data.get('longitude')
 
+        # Walidacja latitude
         if latitude is None:
             raise serializers.ValidationError({'latitude': 'Pole latitude jest wymagane.'})
         try:
@@ -65,6 +66,11 @@ class PointField(serializers.Field):
         except (TypeError, ValueError):
             raise serializers.ValidationError({'latitude': 'Nieprawidłowy format szerokości geograficznej.'})
 
+        # [FIX] Walidacja zakresu latitude
+        if not -90 <= latitude <= 90:
+            raise serializers.ValidationError({'latitude': 'Szerokość geograficzna musi być w zakresie -90 do 90.'})
+
+        # Walidacja longitude
         if longitude is None:
             raise serializers.ValidationError({'longitude': 'Pole longitude jest wymagane.'})
         try:
@@ -72,10 +78,17 @@ class PointField(serializers.Field):
         except (TypeError, ValueError):
             raise serializers.ValidationError({'longitude': 'Nieprawidłowy format długości geograficznej.'})
 
+        # [FIX] Walidacja zakresu longitude
+        if not -180 <= longitude <= 180:
+            raise serializers.ValidationError({'longitude': 'Długość geograficzna musi być w zakresie -180 do 180.'})
+
         return Point(longitude, latitude, srid=4326)
 
 
 class LocationSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla modelu Location z obsługą PostGIS Point.
+    """
     coordinates = PointField()
 
     class Meta:
@@ -92,6 +105,9 @@ class LocationSerializer(serializers.ModelSerializer):
 
 
 class LocationListSerializer(serializers.ModelSerializer):
+    """
+    Serializer dla endpointu GET /api/locations/.
+    """
     coordinates = PointField()
     avg_emotional_value = serializers.SerializerMethodField()
     emotion_points_count = serializers.IntegerField(read_only=True)
@@ -120,6 +136,7 @@ class LocationListSerializer(serializers.ModelSerializer):
     @extend_schema_field({
         'type': 'object',
         'nullable': True,
+        'description': 'Ostatni komentarz z uwzględnieniem prywatności.',
         'properties': {
             'username': {'type': 'string'},
             'content': {'type': 'string'},
@@ -161,6 +178,21 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             'comment',
         ]
         read_only_fields = ['id']
+        extra_kwargs = {
+            'emotional_value': {
+                'error_messages': {
+                    'min_value': 'Wartość emocjonalna musi być w zakresie 1-5.',
+                    'max_value': 'Wartość emocjonalna musi być w zakresie 1-5.',
+                    'required': 'Pole emotional_value jest wymagane.',
+                    'invalid': 'Nieprawidłowy format wartości emocjonalnej.',
+                }
+            },
+            'privacy_status': {
+                'error_messages': {
+                    'invalid_choice': 'Status prywatności musi być "public" lub "private".',
+                }
+            }
+        }
 
     def create(self, validated_data):
         location_data = validated_data.pop('location')
@@ -186,7 +218,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             location_name = custom_location_name if custom_location_name else f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
             location = Location.objects.create(name=location_name, coordinates=point)
 
-        # [FIX] Użycie .get() dla privacy_status z wartością domyślną 'public'
         privacy_status = validated_data.get('privacy_status', 'public')
 
         emotion_point, _ = EmotionPoint.objects.update_or_create(
@@ -202,7 +233,7 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             existing_comment = Comment.objects.filter(user=user, location=location, emotion_point=emotion_point).first()
             if existing_comment:
                 existing_comment.content = comment_content.strip()
-                existing_comment.privacy_status = privacy_status  # Aktualizuj też prywatność
+                existing_comment.privacy_status = privacy_status
                 existing_comment.save()
             else:
                 Comment.objects.create(
@@ -272,7 +303,6 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
-        # Domyślnie public jeśli nie podano
         if 'privacy_status' not in validated_data:
             validated_data['privacy_status'] = 'public'
         return super().create(validated_data)
