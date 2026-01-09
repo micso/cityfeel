@@ -3,6 +3,8 @@ from django.contrib.gis.geos import Point, Polygon
 from map.models import Location
 from emotions.models import EmotionPoint
 
+class NumberInFilter(filters.BaseInFilter, filters.NumberFilter):
+    pass
 
 class LocationFilter(filters.FilterSet):
     """
@@ -16,6 +18,8 @@ class LocationFilter(filters.FilterSet):
 
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
 
+    emotional_value = filters.BaseInFilter(field_name='emotion_points__emotional_value')
+
     # Filtry dla radius search
     lat = filters.NumberFilter(method='filter_radius')
     lon = filters.NumberFilter(method='filter_radius')
@@ -26,7 +30,7 @@ class LocationFilter(filters.FilterSet):
 
     class Meta:
         model = Location
-        fields = ['name', 'lat', 'lon', 'radius', 'bbox']
+        fields = ['name', 'lat', 'lon', 'radius', 'bbox', 'emotional_value']
 
     def filter_radius(self, queryset, name, value):
         """
@@ -103,7 +107,7 @@ class EmotionPointFilter(filters.FilterSet):
     - emotional_value: filtrowanie po wielu wartościach (np. ?emotional_value=1,2,3)
     """
 
-    emotional_value = filters.BaseInFilter(field_name='emotional_value')
+    emotional_value = NumberInFilter(field_name='emotional_value', lookup_expr='in')
 
     class Meta:
         model = EmotionPoint

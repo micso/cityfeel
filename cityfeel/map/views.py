@@ -3,10 +3,13 @@ from django.views.generic import TemplateView, DetailView
 from django.db.models import Avg, Count
 from django.urls import reverse_lazy
 from django.conf import settings
+from django.shortcuts import redirect
+from django.contrib import messages
 
-from emotions.models import EmotionPoint
+from emotions.models import EmotionPoint, Photo
 from map.models import Location
-from emotions.forms import CommentForm  # Ważny import
+# Importujemy oba formularze
+from emotions.forms import PhotoForm, CommentForm
 
 
 class EmotionMapView(LoginRequiredMixin, TemplateView):
@@ -24,7 +27,7 @@ class EmotionMapView(LoginRequiredMixin, TemplateView):
 
 
 class LocationDetailView(LoginRequiredMixin, DetailView):
-    """Widok szczegółowy lokalizacji z publicznymi emotion points i statystykami."""
+    """Widok szczegółowy lokalizacji z publicznymi emotion points, zdjęciami i statystykami."""
     model = Location
     template_name = 'map/location_detail.html'
     context_object_name = 'location'
@@ -40,7 +43,7 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         location = self.object
 
-        # Publiczne emotion points + komentarze
+        # Publiczne emotion points + komentarze (Twoja zmiana: prefetch comments)
         public_points = (
             EmotionPoint.objects
             .filter(location=location, privacy_status='public')
@@ -49,7 +52,10 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             .order_by('-created_at')
         )
 
-        # Statystyki rozkładu ocen
+        # Zdjęcia lokalizacji (Zmiana z mastera)
+        photos = location.photos.all().order_by('-created_at')
+
+        # Statystyki rozkładu ocen (1-5)
         emotion_distribution = (
             EmotionPoint.objects
             .filter(location=location)
@@ -66,9 +72,45 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 
         context.update({
             'public_points': public_points,
+            'photos': photos,
+            'photo_form': PhotoForm(),
             'emotion_distribution': emotion_distribution,
             'user_emotion_point': user_emotion_point,
-            'comment_form': CommentForm(),  # Przekazanie formularza do szablonu
+            'comment_form': CommentForm(),  # Przekazanie formularza komentarza
         })
 
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Obsługa formularzy POST (Zdjęcia i Oceny)."""
+        self.object = self.get_object()
+        
+        # 1. Obsługa dodawania zdjęcia
+        if 'image' in request.FILES:
+            photo_form = PhotoForm(request.POST, request.FILES)
+            if photo_form.is_valid():
+                photo = photo_form.save(commit=False)
+                photo.location = self.object
+                photo.save()
+                messages.success(request, 'Zdjęcie zostało dodane!')
+            else:
+                for error in photo_form.errors.values():
+                    messages.error(request, error)
+            return redirect('map:location_detail', pk=self.object.pk)
+
+        # 2. Obsługa dodawania oceny (standardowy formularz fallback)
+        emotional_value = request.POST.get('emotional_value')
+        privacy_status = request.POST.get('privacy_status', 'public')
+
+        if emotional_value:
+            EmotionPoint.objects.update_or_create(
+                user=request.user,
+                location=self.object,
+                defaults={
+                    'emotional_value': emotional_value,
+                    'privacy_status': privacy_status
+                }
+            )
+            messages.success(request, 'Twoja ocena została zapisana!')
+        
+        return redirect('map:location_detail', pk=self.object.pk)

@@ -85,7 +85,7 @@
         <hr>
 
         <!-- Ostatnio dodane emocje -->
-        <h4 class="text-primary mb-3">Ostatnio dodane emocje (publiczne)</h4>
+        <h4 class="text-primary mb-3">Ostatnio dodane emocje</h4>
 
         {% if recent_emotions %}
           <div class="list-group">
@@ -93,7 +93,11 @@
               <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
-                    <h6 class="mb-1">{{ emotion.location.name }}</h6>
+                      <h6 class="mb-1">
+                          <a href="{% url 'map:location_detail' emotion.location.id %}" class="text-decoration-none">
+                              {{ emotion.location.name }}
+                          </a>
+                      </h6>
                     <small class="text-muted">
                       {{ emotion.created_at|date:"d.m.Y H:i" }}
                     </small>

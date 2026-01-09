@@ -243,3 +243,24 @@ body {
   border-radius: 0.5rem;
   font-size: 0.9rem;
 }
+
+/* Definicje kolorów emotek filtrujących */
+.btn-emo-1 { background-color: #e74c3c !important; border-color: #e74c3c !important; color: white !important; }
+.btn-outline-emo-1 { color: #e74c3c !important; border-color: #e74c3c !important; background-color: white; }
+.btn-outline-emo-1:hover { background-color: #fceceb !important; }
+
+.btn-emo-2 { background-color: #e67e22 !important; border-color: #e67e22 !important; color: white !important; }
+.btn-outline-emo-2 { color: #e67e22 !important; border-color: #e67e22 !important; background-color: white; }
+.btn-outline-emo-2:hover { background-color: #fcf2e9 !important; }
+
+.btn-emo-3 { background-color: #f39c12 !important; border-color: #f39c12 !important; color: white !important; }
+.btn-outline-emo-3 { color: #f39c12 !important; border-color: #f39c12 !important; background-color: white; }
+.btn-outline-emo-3:hover { background-color: #fef5e7 !important; }
+
+.btn-emo-4 { background-color: #2ecc71 !important; border-color: #2ecc71 !important; color: white !important; }
+.btn-outline-emo-4 { color: #2ecc71 !important; border-color: #2ecc71 !important; background-color: white; }
+.btn-outline-emo-4:hover { background-color: #eafaf1 !important; }
+
+.btn-emo-5 { background-color: #27ae60 !important; border-color: #27ae60 !important; color: white !important; }
+.btn-outline-emo-5 { color: #27ae60 !important; border-color: #27ae60 !important; background-color: white; }
+.btn-outline-emo-5:hover { background-color: #e9f7ef !important; }

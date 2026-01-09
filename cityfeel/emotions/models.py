@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from map.models import Location
@@ -78,8 +79,6 @@ class EmotionPoint(models.Model):
         return f"{self.user.username} - {self.location.name} ({self.emotional_value}/{self.MAX_EMOTIONAL_VALUE})"
 
 
-# --- Nowy kod dla Zadania #31 (jako osobna klasa) ---
-
 class Comment(models.Model):
     """
     Komentarz użytkownika do punktu emocji.
@@ -113,3 +112,32 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Komentarz użytkownika {self.user} do punktu {self.emotion_point_id}"
+
+
+def validate_image_size(image):
+    file_size = image.size
+    limit_mb = 5
+    if file_size > limit_mb * 1024 * 1024:
+        raise ValidationError(f"Maksymalny rozmiar pliku to {limit_mb}MB")
+
+
+class Photo(models.Model):
+    location = models.ForeignKey(
+        Location, 
+        on_delete=models.CASCADE, 
+        related_name='photos',
+        help_text="Lokalizacja, której dotyczy zdjęcie"
+    )
+    image = models.ImageField(
+        upload_to='location_photos/%Y/%m/%d/', 
+        validators=[validate_image_size]
+    )
+    caption = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Zdjęcie"
+        verbose_name_plural = "Zdjęcia"
+
+    def __str__(self):
+        return f"Zdjęcie do lokalizacji {self.location.name}"

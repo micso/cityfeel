@@ -23,6 +23,9 @@ class CFUserAdmin(UserAdmin):
 
     # Show avatar status in user list
     list_display = ['username', 'email', 'first_name', 'last_name', 'is_staff', 'has_avatar']
+    list_filter = ['is_staff', 'is_superuser', 'is_active', 'date_joined']
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    date_hierarchy = 'date_joined'
 
     def has_avatar(self, obj):
         """Display whether user has avatar."""
@@ -39,3 +42,20 @@ class FriendshipAdmin(admin.ModelAdmin):
     list_filter = ['status', 'created_at']
     search_fields = ['user__username', 'friend__username']
     autocomplete_fields = ['user', 'friend']
+    readonly_fields = ['created_at']
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Relacja', {
+            'fields': ('user', 'friend', 'status')
+        }),
+        ('Metadata', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def get_queryset(self, request):
+        """Optimize queries with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related('user', 'friend')

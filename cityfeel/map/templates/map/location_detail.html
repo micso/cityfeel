@@ -20,9 +20,9 @@
       {% if user_emotion_point %}
         <div class="d-flex align-items-center justify-content-end gap-2">
             <span class="badge bg-success">Już oceniłeś</span>
-            <button type="button"
-                    class="btn btn-outline-danger btn-sm"
-                    data-bs-toggle="modal"
+            <button type="button" 
+                    class="btn btn-outline-danger btn-sm" 
+                    data-bs-toggle="modal" 
                     data-bs-target="#deleteModal"
                     data-action-url="{% url 'emotions:delete' user_emotion_point.pk %}"
                     data-message="Czy na pewno chcesz usunąć swoją ocenę punktu?">
@@ -78,6 +78,36 @@
     </div>
   </div>
 
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Zdjęcia</h3>
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#photoModal">
+      <i class="bi bi-camera"></i> Dodaj zdjęcie
+    </button>
+  </div>
+
+  <div class="row mb-4">
+    {% for photo in photos %}
+      <div class="col-6 col-md-3 mb-3">
+        <div class="card shadow-sm h-100">
+          <a href="{{ photo.image.url }}" target="_blank">
+            <img src="{{ photo.image.url }}" class="card-img-top" alt="{{ photo.caption|default:location.name }}" style="height: 150px; object-fit: cover;">
+          </a>
+          {% if photo.caption %}
+            <div class="card-footer p-2 text-muted small text-truncate">
+              {{ photo.caption }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <p class="text-muted">Brak zdjęć dla tej lokalizacji.</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <hr class="mb-4">
+
   <h3 class="mb-3">Opinie użytkowników</h3>
   {% for point in public_points %}
     <div class="card shadow-sm mb-3">
@@ -91,7 +121,7 @@
                     {{ point.user.username|slice:":1"|upper }}
                 </div>
             {% endif %}
-
+            
             <div>
                 <h6 class="mb-0 fw-bold">{{ point.user.username }}</h6>
                 <small class="text-muted">{{ point.created_at|date:"d.m.Y H:i" }}</small>
@@ -99,11 +129,10 @@
           </div>
           <div class="text-end">
              <span class="badge bg-primary fs-6">{{ point.emotional_value }}/5</span>
-
              {% if user.is_staff or user == point.user %}
-                <button type="button"
+                <button type="button" 
                         class="btn btn-link btn-sm text-danger p-0 border-0 text-decoration-none ms-2"
-                        data-bs-toggle="modal"
+                        data-bs-toggle="modal" 
                         data-bs-target="#deleteModal"
                         data-action-url="{% url 'emotions:delete' point.pk %}"
                         data-message="Czy na pewno chcesz usunąć tę opinię?">
@@ -115,7 +144,7 @@
 
         <div class="comments-section mt-3 ps-3 border-start">
             <h6 class="small text-muted mb-2">Komentarze:</h6>
-
+            
             <div id="comments-list-{{ point.id }}" class="mb-2">
                 {% for comment in point.comments.all %}
                     <div class="mb-2 bg-light p-2 rounded position-relative">
@@ -124,13 +153,13 @@
                                 <strong class="small text-dark">{{ comment.user.username }}</strong>
                                 <small class="text-muted ms-1" style="font-size: 0.75rem;">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
                             </div>
-
+                            
                             {% if user.is_staff or user == comment.user %}
-                                <button type="button"
-                                        class="btn btn-link btn-sm text-danger p-0 ms-2"
-                                        style="font-size: 1.2rem; line-height: 0.5;"
+                                <button type="button" 
+                                        class="btn btn-link btn-sm text-danger p-0 ms-2" 
+                                        style="font-size: 1.2rem; line-height: 0.5;" 
                                         title="Usuń komentarz"
-                                        data-bs-toggle="modal"
+                                        data-bs-toggle="modal" 
                                         data-bs-target="#deleteModal"
                                         data-action-url="{% url 'emotions:delete_comment' comment.id %}"
                                         data-message="Czy usunąć komentarz użytkownika {{ comment.user.username }}?">
@@ -157,6 +186,7 @@
                 <small class="text-muted"><a href="{% url 'cf_auth:login' %}">Zaloguj się</a>, aby skomentować.</small>
             {% endif %}
         </div>
+
       </div>
     </div>
   {% empty %}
@@ -176,7 +206,6 @@
       </div>
       <div class="modal-footer border-top-0">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Anuluj</button>
-
         <form id="deleteForm" method="post" action="">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger btn-sm">Usuń definitywnie</button>
@@ -185,36 +214,62 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Dodaj zdjęcie</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            {{ photo_form.image.label_tag }}
+            {{ photo_form.image }}
+            {% if photo_form.image.help_text %}
+              <div class="form-text">{{ photo_form.image.help_text }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            {{ photo_form.caption.label_tag }}
+            {{ photo_form.caption }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Wyślij</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-      // --- MAPA (Logika przywrócona z mastera) ---
-      // Używamy .y (lat) i .x (lon) bezpośrednio z formatowaniem kropki
+      // --- MAPA (Naprawa buga: używamy .y i .x + formatowanie kropki) ---
       var lat = {{ location.coordinates.y|stringformat:".6f" }};
       var lon = {{ location.coordinates.x|stringformat:".6f" }};
 
       if (!isNaN(lat) && !isNaN(lon)) {
           const detailMap = L.map('detail-map', {
-            dragging: false,
-            touchZoom: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            zoomControl: false
+            dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, zoomControl: false
           }).setView([lat, lon], 15);
 
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; OpenStreetMap contributors'
           }).addTo(detailMap);
-
+          
           L.marker([lat, lon]).addTo(detailMap);
 
           // FIX z mastera: Odśwież rozmiar mapy po chwili (zapobiega szarym kafelkom)
           setTimeout(function(){ detailMap.invalidateSize()}, 200);
       }
 
-      // --- OBSŁUGA MODALA ---
+      // --- OBSŁUGA MODALA USUWANIA ---
       const deleteModal = document.getElementById('deleteModal');
       deleteModal.addEventListener('show.bs.modal', function (event) {
           const button = event.relatedTarget;
@@ -230,16 +285,16 @@
 
       // --- OBSŁUGA KOMENTARZY (AJAX) ---
       const forms = document.querySelectorAll('.comment-form');
-
+      
       forms.forEach(form => {
           form.addEventListener('submit', function(e) {
               e.preventDefault();
-
+              
               const emotionId = this.dataset.emotionId;
               const formData = new FormData(this);
               const submitBtn = this.querySelector('button');
               const textarea = this.querySelector('textarea');
-
+              
               if (submitBtn.disabled) return;
               submitBtn.disabled = true;
               submitBtn.textContent = '...';
@@ -269,12 +324,12 @@
                                     <strong class="small text-dark">${escapeHtml(data.comment.username)}</strong>
                                     <small class="text-muted ms-1" style="font-size: 0.75rem;">Teraz</small>
                                 </div>
-
-                                <button type="button"
-                                        class="btn btn-link btn-sm text-danger p-0 ms-2"
-                                        style="font-size: 1.2rem; line-height: 0.5;"
+                                
+                                <button type="button" 
+                                        class="btn btn-link btn-sm text-danger p-0 ms-2" 
+                                        style="font-size: 1.2rem; line-height: 0.5;" 
                                         title="Usuń komentarz"
-                                        data-bs-toggle="modal"
+                                        data-bs-toggle="modal" 
                                         data-bs-target="#deleteModal"
                                         data-action-url="${deleteUrl}"
                                         data-message="Czy usunąć ten nowy komentarz?">
