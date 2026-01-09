@@ -36,16 +36,17 @@ class EmotionPointAdmin(admin.ModelAdmin):
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     """Admin interface for Comment."""
-    list_display = ['user', 'emotion_point', 'created_at', 'short_content']
-    list_filter = ['created_at', 'user']
-    search_fields = ['user__username', 'content']
+    # [ZMIANA] emotion_point -> location
+    list_display = ['user', 'location', 'created_at', 'short_content']
+    list_filter = ['created_at', 'user', 'location']
+    search_fields = ['user__username', 'content', 'location__name']
     readonly_fields = ['created_at']
-    autocomplete_fields = ['user', 'emotion_point']
+    autocomplete_fields = ['user', 'location']
     date_hierarchy = 'created_at'
 
     fieldsets = (
         ('Komentarz', {
-            'fields': ('user', 'emotion_point', 'content')
+            'fields': ('user', 'location', 'content')
         }),
         ('Metadata', {
             'fields': ('created_at',),
@@ -62,21 +63,22 @@ class CommentAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queries with select_related."""
         qs = super().get_queryset(request)
-        return qs.select_related('user', 'emotion_point')
+        return qs.select_related('user', 'location')
 
 
 @admin.register(Photo)
 class PhotoAdmin(admin.ModelAdmin):
     """Admin interface for Photo."""
-    list_display = ['location', 'created_at', 'caption', 'image_preview']
-    list_filter = ['created_at', 'location']
-    search_fields = ['location__name', 'caption']
+    # [ZMIANA] Dodano user do widoków
+    list_display = ['location', 'user', 'created_at', 'caption', 'image_preview']
+    list_filter = ['created_at', 'location', 'user']
+    search_fields = ['location__name', 'caption', 'user__username']
     readonly_fields = ['created_at', 'image_preview']
-    autocomplete_fields = ['location']
+    autocomplete_fields = ['location', 'user']
 
     fieldsets = (
         ('Zdjęcie', {
-            'fields': ('location', 'image', 'caption')
+            'fields': ('location', 'user', 'image', 'caption')
         }),
         ('Preview', {
             'fields': ('image_preview',),

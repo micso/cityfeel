@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 {% endblock %}
 
 {% block content %}
@@ -27,14 +28,18 @@
       {% if user_emotion_point %}
         <div class="d-flex align-items-center justify-content-end gap-2">
             <span class="badge bg-success">Twój głos: {{ user_emotion_point.emotional_value }}/5</span>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#rateModal">Edytuj</button>
-            <form action="{% url 'emotions:delete' user_emotion_point.pk %}" method="post" onsubmit="return confirm('Usunąć twoją ocenę?');" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger btn-sm">Usuń</button>
-            </form>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#rateModal">Edytuj ocenę</button>
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#confirmationModal"
+                    data-action-url="{% url 'emotions:delete_emotion' user_emotion_point.pk %}"
+                    data-confirm-message="Czy na pewno chcesz usunąć swoją ocenę?">
+                Usuń
+            </button>
         </div>
       {% else %}
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rateModal">Dodaj ocenę</button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rateModal">Oceń miejsce</button>
       {% endif %}
     </div>
   </div>
@@ -46,7 +51,7 @@
           <h5 class="card-title">Średnia ocena</h5>
           {% if location.avg_emotional_value %}
             <h2 class="display-3 text-primary fw-bold">{{ location.avg_emotional_value|floatformat:1 }}</h2>
-            <p class="text-muted">na podstawie {{ location.emotion_points_count }} ocen</p>
+            <p class="text-muted">na podstawie {{ location.emotion_points_count }} głosów</p>
           {% else %}
             <p class="text-muted mt-3">Brak ocen. Bądź pierwszy!</p>
           {% endif %}
@@ -57,7 +62,7 @@
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-body">
-          <h5 class="card-title mb-3">Rozkład ocen</h5>
+          <h5 class="card-title mb-3">Rozkład głosów</h5>
           {% for dist in emotion_distribution %}
             <div class="d-flex align-items-center mb-2">
               <span class="me-2 fw-bold" style="width: 30px;">{{ dist.emotional_value }}</span>
@@ -92,94 +97,125 @@
   <div class="row mb-4">
     {% for photo in photos %}
       <div class="col-6 col-md-3 mb-3">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 position-relative group-hover-container">
+
+          {% if user == photo.user or user.is_staff %}
+            <div class="position-absolute top-0 end-0 m-1" style="z-index: 10;">
+                <button type="button" class="btn btn-light btn-sm opacity-75 hover-opacity-100 me-1" title="Edytuj opis" data-bs-toggle="modal" data-bs-target="#editPhotoModal" data-action-url="{% url 'emotions:edit_photo_caption' photo.pk %}" data-caption="{{ photo.caption }}"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="btn btn-danger btn-sm opacity-75 hover-opacity-100" title="Usuń zdjęcie" data-bs-toggle="modal" data-bs-target="#confirmationModal" data-action-url="{% url 'emotions:delete_photo' photo.pk %}" data-confirm-message="Czy na pewno chcesz usunąć to zdjęcie?"><i class="bi bi-trash"></i></button>
+            </div>
+          {% endif %}
+
           <a href="{{ photo.image.url }}" target="_blank">
             <img src="{{ photo.image.url }}" class="card-img-top" alt="{{ photo.caption|default:location.name }}" style="height: 150px; object-fit: cover;">
           </a>
-          {% if photo.caption %}
-            <div class="card-footer p-2 text-muted small text-truncate">
-              {{ photo.caption }}
-            </div>
-          {% endif %}
+
+          <div class="card-footer p-2 small">
+              <div class="d-flex justify-content-between align-items-center mb-1 text-muted" style="font-size: 0.75rem;">
+                <div>
+                    {% if photo.privacy_status == 'private' %}
+                        <span class="fw-bold">Anonim</span>
+                        {% if user.is_staff %}
+                            <span class="text-info">[{{ photo.user.username }}]</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="fw-bold">{{ photo.user.username }}</span>
+                    {% endif %}
+                </div>
+                <span>{{ photo.created_at|date:"d.m.Y" }}</span>
+              </div>
+
+              <div class="text-truncate">
+                  {{ photo.caption|default:'<span class="fst-italic text-muted">Brak opisu</span>'|safe }}
+              </div>
+          </div>
         </div>
       </div>
     {% empty %}
-      <div class="col-12">
-        <p class="text-muted">Brak zdjęć dla tej lokalizacji.</p>
-      </div>
+      <div class="col-12"><p class="text-muted">Brak zdjęć dla tej lokalizacji.</p></div>
     {% endfor %}
   </div>
 
   <hr class="mb-4">
 
-  <h3 class="mb-3">Publiczne opinie</h3>
-  {% for point in public_points %}
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <h6 class="fw-bold mb-0">{{ point.user.username }}</h6>
-            <small class="text-muted">{{ point.created_at|date:"d.m.Y H:i" }}</small>
-          </div>
-          <span class="badge bg-primary fs-6">{{ point.emotional_value }}/5</span>
-        </div>
-
-        {% if point.comments.exists %}
-          <hr class="my-2">
-          <div class="mt-2">
-            {% for comment in point.comments.all %}
-              <div class="ps-3 border-start border-3 border-light mb-2">
-                <small class="text-muted fw-bold">{{ comment.user.username }}:</small>
-                <span class="fst-italic">"{{ comment.content }}"</span>
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  {% empty %}
-    <div class="alert alert-light text-center border">
-      Brak publicznych opinii dla tego miejsca.
-    </div>
-  {% endfor %}
-</div>
-
-<div class="modal fade" id="rateModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form method="post">
-        {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title">Oceń to miejsce</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-            <div class="mb-3">
-                <label class="form-label fw-bold">Twoja ocena (1-5)</label>
-                <select name="emotional_value" class="form-select" required>
-                    <option value="" disabled selected>Wybierz...</option>
-                    <option value="5" {% if user_emotion_point.emotional_value == 5 %}selected{% endif %}>5 - Super</option>
-                    <option value="4" {% if user_emotion_point.emotional_value == 4 %}selected{% endif %}>4 - Dobrze</option>
-                    <option value="3" {% if user_emotion_point.emotional_value == 3 %}selected{% endif %}>3 - Średnio</option>
-                    <option value="2" {% if user_emotion_point.emotional_value == 2 %}selected{% endif %}>2 - Słabo</option>
-                    <option value="1" {% if user_emotion_point.emotional_value == 1 %}selected{% endif %}>1 - Tragicznie</option>
-                </select>
+  <div class="mb-5">
+      <h3 class="mb-3">Opinie ({{ ratings_list.count }})</h3>
+      {% for rating in ratings_list %}
+        <div class="card shadow-sm mb-2">
+          <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    {% if rating.privacy_status == 'private' %}
+                        <span class="fw-bold text-muted">Anonim</span>
+                        {% if user.is_staff %}
+                            <small class="text-info">[{{ rating.user.username }}]</small>
+                        {% endif %}
+                    {% else %}
+                        <span class="fw-bold">{{ rating.user.username }}</span>
+                    {% endif %}
+                </div>
+                <span class="badge bg-warning text-dark fs-6">
+                    {{ rating.emotional_value }} <i class="bi bi-star-fill small"></i>
+                </span>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Prywatność</label>
-                <select name="privacy_status" class="form-select">
-                    <option value="public" {% if user_emotion_point.privacy_status == 'public' %}selected{% endif %}>Publiczna (widoczna z nickiem)</option>
-                    <option value="private" {% if user_emotion_point.privacy_status == 'private' %}selected{% endif %}>Prywatna (anonimowa)</option>
-                </select>
-            </div>
+            {% with linked_comment=rating.related_comments.first %}
+                {% if linked_comment %}
+                    <div class="mt-2 ps-3 border-start border-3 border-light text-muted small fst-italic">
+                        "{{ linked_comment.content }}"
+                    </div>
+                {% endif %}
+            {% endwith %}
+          </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-          <button type="submit" class="btn btn-primary">Zapisz ocenę</button>
-        </div>
-      </form>
-    </div>
+      {% empty %}
+        <p class="text-muted">Brak opinii.</p>
+      {% endfor %}
   </div>
+
+  <div class="mb-5">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Komentarze ({{ comments_list.count }})</h3>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#commentModal">
+            <i class="bi bi-chat-text"></i> Dodaj komentarz
+        </button>
+      </div>
+
+      {% for comment in comments_list %}
+        <div class="card shadow-sm mb-2">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    {% if comment.privacy_status == 'private' %}
+                        <span class="fw-bold text-muted">Anonim</span>
+                        {% if user.is_staff %}
+                            <small class="text-info">[{{ comment.user.username }}]</small>
+                        {% endif %}
+                    {% else %}
+                        <span class="fw-bold">{{ comment.user.username }}</span>
+                    {% endif %}
+
+                    {% if comment.related_rating %}
+                        <span class="badge bg-light text-dark border ms-2" title="Ocena tego użytkownika">
+                            {{ comment.related_rating.emotional_value }} <i class="bi bi-star-fill text-warning"></i>
+                        </span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+              </div>
+
+              {% if user == comment.user or user.is_staff %}
+                <button type="button" class="btn btn-link text-danger btn-sm p-0 ms-2" data-bs-toggle="modal" data-bs-target="#confirmationModal" data-action-url="{% url 'emotions:delete_comment' comment.pk %}" data-confirm-message="Czy na pewno chcesz usunąć ten komentarz?"><i class="bi bi-x-lg"></i></button>
+              {% endif %}
+            </div>
+            <div class="mt-2"><p class="mb-0">"{{ comment.content }}"</p></div>
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-muted">Nikt jeszcze nie skomentował tego miejsca.</p>
+      {% endfor %}
+  </div>
+
 </div>
 
 <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
@@ -195,13 +231,14 @@
           <div class="mb-3">
             {{ photo_form.image.label_tag }}
             {{ photo_form.image }}
-            {% if photo_form.image.help_text %}
-              <div class="form-text">{{ photo_form.image.help_text }}</div>
-            {% endif %}
           </div>
           <div class="mb-3">
             {{ photo_form.caption.label_tag }}
             {{ photo_form.caption }}
+          </div>
+          <div class="mb-3">
+            {{ photo_form.privacy_status.label_tag }}
+            {{ photo_form.privacy_status }}
           </div>
         </div>
         <div class="modal-footer">
@@ -209,6 +246,57 @@
           <button type="submit" class="btn btn-primary">Wyślij</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="rateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post">{% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Twoja ocena</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body">
+            <div class="mb-3"><label class="form-label fw-bold">Ocena (1-5)</label><select name="emotional_value" class="form-select" required><option value="" disabled {% if not user_emotion_point %}selected{% endif %}>Wybierz...</option><option value="5" {% if user_emotion_point.emotional_value == 5 %}selected{% endif %}>5 - Super</option><option value="4" {% if user_emotion_point.emotional_value == 4 %}selected{% endif %}>4 - Dobrze</option><option value="3" {% if user_emotion_point.emotional_value == 3 %}selected{% endif %}>3 - Średnio</option><option value="2" {% if user_emotion_point.emotional_value == 2 %}selected{% endif %}>2 - Słabo</option><option value="1" {% if user_emotion_point.emotional_value == 1 %}selected{% endif %}>1 - Tragicznie</option></select></div>
+            <div class="mb-3"><label class="form-label">Prywatność oceny</label><select name="privacy_status" class="form-select"><option value="public" {% if user_emotion_point.privacy_status == 'public' %}selected{% endif %}>Publiczna</option><option value="private" {% if user_emotion_point.privacy_status == 'private' %}selected{% endif %}>Prywatna</option></select></div>
+            <div class="mb-3"><label class="form-label fw-bold">Dodaj komentarz do oceny</label>{% with existing_comment=user_emotion_point.related_comments.first %}<textarea name="comment" class="form-control" rows="3" placeholder="Napisz coś o tym miejscu...">{{ existing_comment.content|default:'' }}</textarea>{% endwith %}</div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button><button type="submit" class="btn btn-primary">Zapisz ocenę</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="commentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post">{% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Dodaj komentarz</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body">
+            <p class="text-muted small mb-3">Dodajesz komentarz niezależnie od oceny.</p>
+            <div class="mb-3"><label class="form-label fw-bold">Treść</label><textarea name="comment" class="form-control" rows="4" placeholder="Napisz co myślisz..." required></textarea></div>
+            <div class="mb-3"><label class="form-label">Prywatność komentarza</label><select name="comment_privacy_status" class="form-select"><option value="public" selected>Publiczny (Twój nick)</option><option value="private">Prywatny (Anonim)</option></select></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button><button type="submit" class="btn btn-primary">Wyślij komentarz</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="editPhotoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="editPhotoForm" method="post" action="">{% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Edytuj opis zdjęcia</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body"><div class="mb-3"><label for="photoCaptionInput" class="form-label">Opis</label><input type="text" name="caption" id="photoCaptionInput" class="form-control" maxlength="255"></div></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button><button type="submit" class="btn btn-primary">Zapisz zmiany</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0"><h5 class="modal-title text-danger">Potwierdź usunięcie</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body"><p id="confirmationMessage">Czy na pewno chcesz to usunąć?</p></div>
+      <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button><form id="confirmationForm" method="post" action="">{% csrf_token %}<button type="submit" class="btn btn-danger">Usuń</button></form></div>
     </div>
   </div>
 </div>
@@ -220,20 +308,32 @@
   document.addEventListener("DOMContentLoaded", function() {
     var lat = {{ location.coordinates.y|stringformat:".6f" }};
     var lon = {{ location.coordinates.x|stringformat:".6f" }};
-
-    var detailMap = L.map('detail-map', {
-        scrollWheelZoom: false
-    }).setView([lat, lon], 15);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(detailMap);
-
-    L.marker([lat, lon]).addTo(detailMap)
-      .bindPopup("<b>{{ location.name }}</b>")
-      .openPopup();
-      
+    var detailMap = L.map('detail-map', { scrollWheelZoom: false }).setView([lat, lon], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(detailMap);
+    L.marker([lat, lon]).addTo(detailMap).bindPopup("<b>{{ location.name }}</b>").openPopup();
     setTimeout(function(){ detailMap.invalidateSize()}, 200);
+
+    var confirmationModal = document.getElementById('confirmationModal');
+    confirmationModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var actionUrl = button.getAttribute('data-action-url');
+        var message = button.getAttribute('data-confirm-message');
+        var modalForm = confirmationModal.querySelector('#confirmationForm');
+        var modalMessage = confirmationModal.querySelector('#confirmationMessage');
+        modalForm.action = actionUrl;
+        if (message) modalMessage.textContent = message;
+    });
+
+    var editPhotoModal = document.getElementById('editPhotoModal');
+    editPhotoModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var actionUrl = button.getAttribute('data-action-url');
+        var currentCaption = button.getAttribute('data-caption');
+        var form = editPhotoModal.querySelector('#editPhotoForm');
+        var input = editPhotoModal.querySelector('#photoCaptionInput');
+        form.action = actionUrl;
+        input.value = currentCaption || '';
+    });
   });
 </script>
 {% endblock %}

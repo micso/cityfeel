@@ -6,14 +6,12 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.contrib import messages
 
-from emotions.models import EmotionPoint, Photo
+from emotions.models import EmotionPoint, Photo, Comment
 from emotions.forms import PhotoForm
 from map.models import Location
 
 
 class EmotionMapView(LoginRequiredMixin, TemplateView):
-    """Main emotion map view - requires authentication."""
-
     template_name = 'map/emotion_map.html'
     login_url = reverse_lazy('cf_auth:login')
 
@@ -26,7 +24,6 @@ class EmotionMapView(LoginRequiredMixin, TemplateView):
 
 
 class LocationDetailView(LoginRequiredMixin, DetailView):
-    """Widok szczegółowy lokalizacji z publicznymi emotion points, zdjęciami i statystykami."""
     model = Location
     template_name = 'map/location_detail.html'
     context_object_name = 'location'
@@ -42,19 +39,35 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         location = self.object
 
-        # Publiczne emotion points
-        public_points = (
+        # 1. OPINIE (Oceny)
+        # Pobieramy oceny wraz z powiązanymi komentarzami
+        ratings = (
             EmotionPoint.objects
-            .filter(location=location, privacy_status='public')
+            .filter(location=location)
             .select_related('user')
-            .prefetch_related('comments')
+            .prefetch_related('related_comments')  # używamy related_name z modelu
             .order_by('-created_at')
         )
 
-        # Zdjęcia lokalizacji
-        photos = location.photos.all().order_by('-created_at')
+        # 2. KOMENTARZE (Samodzielne)
+        # Filtrujemy tylko te, które NIE mają przypisanego emotion_point
+        comments = (
+            Comment.objects
+            .filter(location=location, emotion_point__isnull=True)
+            .select_related('user')
+            .order_by('-created_at')
+        )
 
-        # Statystyki rozkładu ocen (1-5)
+        # 3. Dla "Samodzielnych Komentarzy":
+        # Chcemy wiedzieć, czy ten user wystawił też ocenę (żeby pokazać badge z gwiazdką)
+        ratings_by_user = {r.user_id: r for r in ratings}
+
+        for c in comments:
+            c.related_rating = ratings_by_user.get(c.user.id)
+
+        # Zdjęcia i statystyki
+        photos = location.photos.all().select_related('user').order_by('-created_at')
+
         emotion_distribution = (
             EmotionPoint.objects
             .filter(location=location)
@@ -63,14 +76,11 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
             .order_by('emotional_value')
         )
 
-        # Czy user już ocenił?
-        user_emotion_point = EmotionPoint.objects.filter(
-            location=location,
-            user=self.request.user
-        ).first()
+        user_emotion_point = ratings_by_user.get(self.request.user.id)
 
         context.update({
-            'public_points': public_points,
+            'ratings_list': ratings,
+            'comments_list': comments,
             'photos': photos,
             'photo_form': PhotoForm(),
             'emotion_distribution': emotion_distribution,
@@ -81,13 +91,14 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        
-        # Obsługa dodawania zdjęcia
+
+        # 1. Dodawanie zdjęcia
         if 'image' in request.FILES:
             photo_form = PhotoForm(request.POST, request.FILES)
             if photo_form.is_valid():
                 photo = photo_form.save(commit=False)
                 photo.location = self.object
+                photo.user = request.user
                 photo.save()
                 messages.success(request, 'Zdjęcie zostało dodane!')
             else:
@@ -95,12 +106,15 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
                     messages.error(request, error)
             return redirect('map:location_detail', pk=self.object.pk)
 
-        # Obsługa dodawania oceny
+        # 2. Formularz Oceny i/lub Komentarza
         emotional_value = request.POST.get('emotional_value')
         privacy_status = request.POST.get('privacy_status', 'public')
+        comment_content = request.POST.get('comment')
+        comment_privacy = request.POST.get('comment_privacy_status', privacy_status)
 
+        # A. SCENARIUSZ: Dodanie/Edycja Oceny (z opcjonalnym komentarzem)
         if emotional_value:
-            EmotionPoint.objects.update_or_create(
+            emotion_point, created = EmotionPoint.objects.update_or_create(
                 user=request.user,
                 location=self.object,
                 defaults={
@@ -109,5 +123,45 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
                 }
             )
             messages.success(request, 'Twoja ocena została zapisana!')
-        
+
+            # Obsługa komentarza DO TEJ oceny
+            if comment_content and comment_content.strip():
+                # Sprawdź czy user ma już komentarz do tej oceny
+                existing_comment = Comment.objects.filter(
+                    user=request.user,
+                    location=self.object,
+                    emotion_point=emotion_point
+                ).first()
+
+                if existing_comment:
+                    existing_comment.content = comment_content.strip()
+                    existing_comment.privacy_status = privacy_status
+                    existing_comment.save()
+                else:
+                    Comment.objects.create(
+                        user=request.user,
+                        location=self.object,
+                        emotion_point=emotion_point,  # WIĄŻEMY Z OCENĄ
+                        content=comment_content.strip(),
+                        privacy_status=privacy_status
+                    )
+            elif not created:
+                # Jeśli user edytował ocenę i wyczyścił pole komentarza -> usuń stary komentarz oceny
+                Comment.objects.filter(
+                    user=request.user,
+                    location=self.object,
+                    emotion_point=emotion_point
+                ).delete()
+
+        # B. SCENARIUSZ: Tylko Samodzielny Komentarz (bez wysyłania emotional_value)
+        elif comment_content and comment_content.strip():
+            Comment.objects.create(
+                user=request.user,
+                location=self.object,
+                emotion_point=None,  # BRAK POWIĄZANIA
+                content=comment_content.strip(),
+                privacy_status=comment_privacy
+            )
+            messages.success(request, 'Twój komentarz został dodany!')
+
         return redirect('map:location_detail', pk=self.object.pk)
