@@ -13,19 +13,66 @@ from auth.models import Friendship, CFUser
 @extend_schema_field({
     'type': 'object',
     'properties': {
-        'latitude': {'type': 'number'},
-        'longitude': {'type': 'number'}
+        'latitude': {
+            'type': 'number',
+            'format': 'float',
+            'minimum': -90.0,
+            'maximum': 90.0,
+            'description': 'Szerokość geograficzna'
+        },
+        'longitude': {
+            'type': 'number',
+            'format': 'float',
+            'minimum': -180.0,
+            'maximum': 180.0,
+            'description': 'Długość geograficzna'
+        }
     },
-    'required': ['latitude', 'longitude']
+    'required': ['latitude', 'longitude'],
+    'example': {
+        'latitude': 54.3520,
+        'longitude': 18.6466
+    }
 })
 class PointField(serializers.Field):
+    """
+    Custom serializer field dla django.contrib.gis.db.models.fields.PointField.
+    Konwertuje PostGIS Point na format {latitude, longitude} i odwrotnie.
+    """
+
     def to_representation(self, value):
-        if value is None: return None
-        return {'latitude': value.y, 'longitude': value.x}
+        """Konwertuje PostGIS Point na dict {latitude, longitude}."""
+        if value is None:
+            return None
+
+        return {
+            'latitude': value.y,
+            'longitude': value.x,
+        }
 
     def to_internal_value(self, data):
-        if not isinstance(data, dict): raise serializers.ValidationError("Współrzędne muszą być obiektem.")
-        return Point(float(data.get('longitude')), float(data.get('latitude')), srid=4326)
+        """Konwertuje dict {latitude, longitude} na PostGIS Point."""
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Współrzędne muszą być w formacie obiektu.")
+
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+
+        if latitude is None:
+            raise serializers.ValidationError({'latitude': 'Pole latitude jest wymagane.'})
+        try:
+            latitude = float(latitude)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({'latitude': 'Nieprawidłowy format szerokości geograficznej.'})
+
+        if longitude is None:
+            raise serializers.ValidationError({'longitude': 'Pole longitude jest wymagane.'})
+        try:
+            longitude = float(longitude)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({'longitude': 'Nieprawidłowy format długości geograficznej.'})
+
+        return Point(longitude, latitude, srid=4326)
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -35,6 +82,13 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = ['id', 'name', 'coordinates']
         read_only_fields = ['id']
+        extra_kwargs = {
+            'name': {
+                'required': False,
+                'allow_blank': False,
+                'max_length': 200,
+            }
+        }
 
 
 class LocationListSerializer(serializers.ModelSerializer):
@@ -51,18 +105,21 @@ class LocationListSerializer(serializers.ModelSerializer):
             'avg_emotional_value', 'emotion_points_count',
             'latest_comment', 'comments_count'
         ]
+        read_only_fields = fields
 
     def get_avg_emotional_value(self, obj):
         return getattr(obj, 'avg_emotional_value', None)
 
     @extend_schema_field({'type': 'integer'})
     def get_comments_count(self, obj):
-        return obj.comments.count()
+        try:
+            return obj.comments.count()
+        except Exception:
+            return 0
 
     @extend_schema_field({
         'type': 'object',
         'nullable': True,
-        'description': 'Ostatni komentarz z uwzględnieniem prywatności.',
         'properties': {
             'username': {'type': 'string'},
             'content': {'type': 'string'},
@@ -71,27 +128,17 @@ class LocationListSerializer(serializers.ModelSerializer):
     })
     def get_latest_comment(self, obj):
         try:
-            # Pobieramy najnowszy komentarz
             comment = obj.comments.select_related('user', 'emotion_point').order_by('-created_at').first()
-
             if comment:
                 content = comment.content
-
-                # [POPRAWKA 1] Obsługa anonimowości
-                if comment.privacy_status == 'private':
-                    username = "Anonim"
-                else:
-                    username = comment.user.username
+                username = "Anonim" if comment.privacy_status == 'private' else comment.user.username
 
                 data = {
                     'username': username,
                     'content': content[:100] + '...' if len(content) > 100 else content,
                 }
-
-                # [POPRAWKA 2] Dodaj emotional_value TYLKO jeśli komentarz jest powiązany z oceną
                 if comment.emotion_point:
                     data['emotional_value'] = comment.emotion_point.emotional_value
-
                 return data
         except Exception:
             return None
@@ -106,7 +153,12 @@ class EmotionPointSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmotionPoint
         fields = [
-            'id', 'location', 'emotional_value', 'privacy_status', 'username', 'comment'
+            'id',
+            'location',
+            'emotional_value',
+            'privacy_status',
+            'username',
+            'comment',
         ]
         read_only_fields = ['id']
 
@@ -114,22 +166,26 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         location_data = validated_data.pop('location')
         comment_content = validated_data.pop('comment', None)
         point = location_data['coordinates']
-        custom_name = location_data.get('name')
+        custom_location_name = location_data.get('name', None)
         user = self.context['request'].user
 
         proximity_meters = getattr(settings, 'CITYFEEL_LOCATION_PROXIMITY_RADIUS', 50)
         proximity_degrees = proximity_meters / 111320.0
 
-        nearby = Location.objects.filter(coordinates__dwithin=(point, proximity_degrees)) \
-            .annotate(distance=Distance('coordinates', point)).order_by('distance').first()
+        nearby_location = (
+            Location.objects
+            .filter(coordinates__dwithin=(point, proximity_degrees))
+            .annotate(distance=Distance('coordinates', point))
+            .order_by('distance')
+            .first()
+        )
 
-        if nearby:
-            location = nearby
+        if nearby_location:
+            location = nearby_location
         else:
-            name = custom_name if custom_name else f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
-            location = Location.objects.create(name=name, coordinates=point)
+            location_name = custom_location_name if custom_location_name else f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
+            location = Location.objects.create(name=location_name, coordinates=point)
 
-        # 1. Zapisz EmotionPoint
         emotion_point, _ = EmotionPoint.objects.update_or_create(
             user=user,
             location=location,
@@ -139,7 +195,6 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             }
         )
 
-        # 2. Zapisz Komentarz (powiązany)
         if comment_content and comment_content.strip():
             existing_comment = Comment.objects.filter(user=user, location=location, emotion_point=emotion_point).first()
             if existing_comment:
@@ -168,11 +223,16 @@ class FriendshipSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'friend', 'created_at']
 
     def validate(self, attrs):
+        request = self.context['request']
         if self.instance is None:
-            if self.context['request'].user == attrs['friend']: raise serializers.ValidationError("Błąd")
-            if Friendship.objects.filter((Q(user=self.context['request'].user) & Q(friend=attrs['friend'])) | (
-                    Q(user=attrs['friend']) & Q(
-                friend=self.context['request'].user))).exists(): raise serializers.ValidationError("Już istnieje")
+            friend = attrs['friend']
+            user = request.user
+            if user == friend:
+                raise serializers.ValidationError("Nie możesz wysłać zaproszenia do samego siebie.")
+            if Friendship.objects.filter(
+                    (Q(user=user) & Q(friend=friend)) | (Q(user=friend) & Q(friend=user))).exists():
+                raise serializers.ValidationError(
+                    "Relacja z tym użytkownikiem już istnieje (oczekująca lub zaakceptowana).")
         return attrs
 
     def create(self, validated_data):
@@ -191,14 +251,23 @@ class FriendUserSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-    location_id = serializers.PrimaryKeyRelatedField(source='location', queryset=Location.objects.all(),
-                                                     write_only=True)
+    # [FIX] Zmieniono point_id na location_id, bo model Comment wymaga location
+    location_id = serializers.PrimaryKeyRelatedField(
+        source='location',
+        queryset=Location.objects.all(),
+        write_only=True,
+        error_messages={'does_not_exist': 'Podana lokalizacja nie istnieje.'}
+    )
 
     class Meta:
         model = Comment
-        fields = ['id', 'username', 'content', 'created_at', 'location_id']
+        fields = ['id', 'username', 'content', 'created_at', 'location_id', 'privacy_status']
         read_only_fields = ['id', 'username', 'created_at']
+        extra_kwargs = {
+            'content': {'error_messages': {'blank': 'Treść nie może być pusta.'}}
+        }
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
+        # Tworzymy komentarz "samodzielny" (bez emotion_point)
         return super().create(validated_data)
