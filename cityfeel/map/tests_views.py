@@ -92,13 +92,13 @@ class LocationDetailViewTestCase(TestCase):
         self.assertEqual(response.context['location'], self.location)
 
     def test_context_contains_public_points(self):
-        """Test że context zawiera public_points - tylko publiczne EmotionPoints."""
+        """Test że context zawiera ratings_list z ocenami (wszystkie, nie tylko publiczne)."""
         # Publiczny i prywatny emotion point
         public_emotion = EmotionPoint.objects.create(
             user=self.user1, location=self.location,
             emotional_value=5, privacy_status='public'
         )
-        EmotionPoint.objects.create(
+        private_emotion = EmotionPoint.objects.create(
             user=self.user2, location=self.location,
             emotional_value=3, privacy_status='private'
         )
@@ -106,12 +106,15 @@ class LocationDetailViewTestCase(TestCase):
         self.client.login(username='user1', password='testpass123')
         response = self.client.get(self.url)
 
-        public_points = list(response.context['public_points'])
-        self.assertEqual(len(public_points), 1)
-        self.assertEqual(public_points[0], public_emotion)
+        # [POPRAWKA] Używamy 'ratings_list' zamiast 'public_points'
+        # [POPRAWKA] Oczekujemy 2 ocen (publiczna + prywatna), bo widok zwraca teraz wszystko
+        ratings = list(response.context['ratings_list'])
+        self.assertEqual(len(ratings), 2)
+        self.assertIn(public_emotion, ratings)
+        self.assertIn(private_emotion, ratings)
 
     def test_public_points_sorted_by_created_at_desc(self):
-        """Test że public_points są posortowane po -created_at."""
+        """Test że ratings_list są posortowane po -created_at."""
         ep1 = EmotionPoint.objects.create(
             user=self.user1, location=self.location,
             emotional_value=4, privacy_status='public'
@@ -124,17 +127,15 @@ class LocationDetailViewTestCase(TestCase):
         self.client.login(username='user1', password='testpass123')
         response = self.client.get(self.url)
 
-        public_points = list(response.context['public_points'])
+        # [POPRAWKA] Używamy 'ratings_list' zamiast 'public_points'
+        ratings = list(response.context['ratings_list'])
+
         # Najnowszy powinien być pierwszy (ep2)
-        self.assertEqual(public_points[0], ep2)
-        self.assertEqual(public_points[1], ep1)
+        self.assertEqual(ratings[0], ep2)
+        self.assertEqual(ratings[1], ep1)
 
     def test_context_contains_photos(self):
         """Test że context zawiera photos - sorted by -created_at."""
-        # Photo wymaga privacy_status='public' w modelu, ale tu tworzymy je bezpośrednio
-        # Jeśli model ma default='public', to OK. Jeśli nie, trzeba dodać.
-        # W Twoim modelu default='public', więc create bez pola zadziała,
-        # ale dla spójności dodajmy.
         photo1 = Photo.objects.create(
             location=self.location,
             image='test1.jpg',
@@ -348,6 +349,7 @@ class LocationDetailViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn('/accounts/login/', response.url)
+
     # --- POST tests - dodawanie zdjęcia ---
 
     def test_post_add_photo_with_caption(self):
