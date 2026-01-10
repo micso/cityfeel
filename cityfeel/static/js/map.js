@@ -170,11 +170,17 @@ function initFilters() {
   // === LOADING LOCATIONS ===
   function loadVisibleLocations(force = false) {
     const bounds = map.getBounds();
+
+    // Normalizuj współrzędne do zakresu -180..180
+    // (potrzebne gdy mapa okrąża Ziemię i lng przekracza ±180)
+    const sw = bounds.getSouthWest().wrap();
+    const ne = bounds.getNorthEast().wrap();
+
     const bbox = [
-      bounds.getSouthWest().lng,
-      bounds.getSouthWest().lat,
-      bounds.getNorthEast().lng,
-      bounds.getNorthEast().lat
+      sw.lng,
+      sw.lat,
+      ne.lng,
+      ne.lat
     ].join(',');
 
     // Sprawdź czy bounds się zmieniły (chyba że force=true)
