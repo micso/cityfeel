@@ -129,7 +129,9 @@
 {% block extra_js %}
 <script>
   // Initialize Leaflet map (global variable for map.js)
-  window.map = L.map('map').setView([54.3755425, 18.6088834], 12);
+  window.map = L.map('map', {
+    worldCopyJump: true  // Automatycznie normalizuje pozycję mapy po okrążeniu Ziemi
+  }).setView([54.3755425, 18.6088834], 12);
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
