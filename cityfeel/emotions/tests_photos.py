@@ -40,7 +40,6 @@ class PhotoModelTestCase(TestCase):
         )
         self.assertEqual(photo.caption, '')
         self.assertEqual(photo.location, self.location)
-        self.assertEqual(photo.caption, 'Test caption')
         self.assertIsNotNone(photo.image)
         self.assertIsNotNone(photo.created_at)
         self.assertIsNotNone(photo.image)
@@ -192,6 +191,8 @@ class PhotoFormTestCase(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('image', form.errors)
 
+    # cityfeel/emotions/tests_photos.py
+
     def test_form_caption_max_255_chars(self):
         """Test że caption akceptuje do 255 znaków."""
         image_file = self._create_test_image()
@@ -203,9 +204,12 @@ class PhotoFormTestCase(TestCase):
 
         # 255 znaków - OK
         form_ok = PhotoForm(
-            data={'caption': 'A' * 255},
+            # ZMIANA: Dodano 'privacy_status': 'public'
+            data={'caption': 'A' * 255, 'privacy_status': 'public'},
             files={'image': photo_file}
         )
+        # Debugowanie: jeśli to nadal nie działa, odkomentuj poniższą linię, aby zobaczyć błędy:
+        # print(form_ok.errors)
         self.assertTrue(form_ok.is_valid())
 
         # 256 znaków - ERROR
@@ -217,7 +221,8 @@ class PhotoFormTestCase(TestCase):
         )
 
         form_long = PhotoForm(
-            data={'caption': 'A' * 256},
+            # ZMIANA: Dodano 'privacy_status': 'public'
+            data={'caption': 'A' * 256, 'privacy_status': 'public'},
             files={'image': photo_file2}
         )
         self.assertFalse(form_long.is_valid())
