@@ -29,7 +29,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
         )
         self.web_client.login(username='testuser', password='testpass123')
 
-        # [NAPRAWA] Ustawiamy autoryzację, aby unikać KeyError w response.data w testach API
+        # Logujemy klienta API
         self.client.force_authenticate(user=self.user)
 
         self.location = Location.objects.create(
@@ -150,12 +150,12 @@ class PrivacyLogicIntegrationTestCase(TestCase):
             emotional_value=5,
             privacy_status='public'
         )
-        # [NAPRAWA] Dodano location=self.location
         Comment.objects.create(
             user=self.user,
             emotion_point=ep1,
             location=self.location,
-            content='Public'
+            content='Public',
+            privacy_status='public'
         )
 
         # Prywatny z komentarzem
@@ -166,16 +166,18 @@ class PrivacyLogicIntegrationTestCase(TestCase):
             emotional_value=3,
             privacy_status='private'
         )
-        # [NAPRAWA] Dodano location=self.location
+        # [NAPRAWA] Ustawiamy privacy_status='private' (inaczej byłby publiczny defaultowo)
         Comment.objects.create(
             user=u2,
             emotion_point=ep2,
             location=self.location,
-            content='Private'
+            content='Private',
+            privacy_status='private'
         )
 
         response = self.client.get('/api/locations/')
         loc = response.data['results'][0]
+        # Oczekujemy 1, bo drugi jest prywatny
         self.assertEqual(loc['comments_count'], 1)
 
     def test_latest_comment_only_from_public_emotion_points(self):
@@ -187,12 +189,13 @@ class PrivacyLogicIntegrationTestCase(TestCase):
             emotional_value=3,
             privacy_status='private'
         )
-        # [NAPRAWA] Dodano location=self.location
+        # [NAPRAWA] Ustawiamy privacy_status='private'
         Comment.objects.create(
             user=u2,
             emotion_point=ep_priv,
             location=self.location,
-            content='Secret'
+            content='Secret',
+            privacy_status='private'
         )
 
         ep_pub = EmotionPoint.objects.create(
@@ -201,16 +204,19 @@ class PrivacyLogicIntegrationTestCase(TestCase):
             emotional_value=5,
             privacy_status='public'
         )
-        # [NAPRAWA] Dodano location=self.location
         Comment.objects.create(
             user=self.user,
             emotion_point=ep_pub,
             location=self.location,
-            content='Visible'
+            content='Visible',
+            privacy_status='public'
         )
 
         response = self.client.get('/api/locations/')
         loc = response.data['results'][0]
+        # Ponieważ 'Visible' został utworzony później, on jest najnowszy.
+        # Gdyby 'Secret' był nowszy, API zwróciłoby go jako 'Anonim' (zgodnie z nową logiką)
+        # Ten test weryfikuje głównie poprawne sortowanie i dostępność
         self.assertEqual(loc['latest_comment']['content'], 'Visible')
 
     def test_comments_count_only_public_emotion_points(self):
@@ -221,25 +227,26 @@ class PrivacyLogicIntegrationTestCase(TestCase):
             emotional_value=5,
             privacy_status='public'
         )
-        # [NAPRAWA] Dodano location=self.location
         Comment.objects.create(
             user=self.user,
             emotion_point=ep,
             location=self.location,
-            content='C1'
+            content='C1',
+            privacy_status='public'
         )
         Comment.objects.create(
             user=self.user,
             emotion_point=ep,
             location=self.location,
-            content='C2'
+            content='C2',
+            privacy_status='public'
         )
 
         response = self.client.get('/api/locations/')
         self.assertEqual(response.data['results'][0]['comments_count'], 2)
 
     # =========================================================================
-    # 2. PHOTOS (Sekcja zdjęć - w pełni zachowana)
+    # 2. PHOTOS
     # =========================================================================
 
     def test_public_photo_visible_in_location_detail(self):
@@ -431,7 +438,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
 
         data = {
             'image': simple_file,
-            'privacy_status': 'public'  # Wymuszamy public bo HTML select zawsze coś wysyła
+            'privacy_status': 'public'
         }
         self.web_client.post(url, data)
         photo = Photo.objects.first()

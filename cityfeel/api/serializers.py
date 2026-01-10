@@ -144,9 +144,10 @@ class LocationListSerializer(serializers.ModelSerializer):
     def get_comments_count(self, obj):
         """Liczy komentarze tylko z publicznych punktów."""
         try:
+            # Używamy bezpośredniego pola location oraz privacy_status komentarza
             return Comment.objects.filter(
-                emotion_point__location=obj,
-                emotion_point__privacy_status='public'
+                location=obj,
+                privacy_status='public'
             ).count()
         except Exception:
             return 0
@@ -154,7 +155,7 @@ class LocationListSerializer(serializers.ModelSerializer):
     @extend_schema_field({
         'type': 'object',
         'nullable': True,
-        'description': 'Ostatni publiczny komentarz dodany w tej lokalizacji.',
+        'description': 'Ostatni komentarz (publiczny lub prywatny) dodany w tej lokalizacji.',
         'properties': {
             'username': {'type': 'string'},
             'content': {'type': 'string'},
@@ -168,12 +169,13 @@ class LocationListSerializer(serializers.ModelSerializer):
     })
     def get_latest_comment(self, obj):
         try:
+            # Pobieramy request z kontekstu, żeby sprawdzić czy to "Ty"
+            request = self.context.get('request')
+            current_user = request.user if request else None
+
             comment = (
                 Comment.objects
-                .filter(
-                    emotion_point__location=obj,
-                    emotion_point__privacy_status='public'
-                )
+                .filter(location=obj)  # [FIX] Usunięto filtr privacy_status='public'
                 .exclude(content__isnull=True)
                 .exclude(content__exact='')
                 .select_related('user', 'emotion_point')
@@ -183,10 +185,21 @@ class LocationListSerializer(serializers.ModelSerializer):
 
             if comment:
                 content = comment.content
+                emotional_val = comment.emotion_point.emotional_value if comment.emotion_point else None
+
+                # Logika wyświetlania nazwy użytkownika
+                username_display = comment.user.username
+
+                if comment.privacy_status == 'private':
+                    if current_user and comment.user == current_user:
+                        username_display = "Anonim (Ty)"
+                    else:
+                        username_display = "Anonim"
+
                 return {
-                    'username': comment.user.username,
+                    'username': username_display,
                     'content': content[:100] + '...' if len(content) > 100 else content,
-                    'emotional_value': comment.emotion_point.emotional_value
+                    'emotional_value': emotional_val
                 }
         except Exception as e:
             return None
@@ -197,6 +210,8 @@ class LocationListSerializer(serializers.ModelSerializer):
 class EmotionPointSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     location = LocationSerializer()
+    # Pole komentarza (opcjonalne, tylko do zapisu)
+    comment = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = EmotionPoint
@@ -206,6 +221,7 @@ class EmotionPointSerializer(serializers.ModelSerializer):
             'emotional_value',
             'privacy_status',
             'username',
+            'comment',
         ]
         read_only_fields = ['id']
         extra_kwargs = {
@@ -227,11 +243,15 @@ class EmotionPointSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Tworzy lub aktualizuje EmotionPoint z proximity matching dla Location.
+        Tworzy komentarz jeśli został podany.
         """
         # Wyciągnij nested location data
         location_data = validated_data.pop('location')
         point = location_data['coordinates']  # PostGIS Point z PointField
         custom_location_name = location_data.get('name', None)
+
+        # Wyciągnij treść komentarza
+        comment_content = validated_data.pop('comment', None)
 
         user = self.context['request'].user
 
@@ -290,6 +310,16 @@ class EmotionPointSerializer(serializers.ModelSerializer):
                 user=user,
                 location=location,
                 **validated_data
+            )
+
+        # Utwórz komentarz jeśli został podany
+        if comment_content:
+            Comment.objects.create(
+                user=user,
+                emotion_point=emotion_point,
+                location=location,
+                content=comment_content,
+                privacy_status=emotion_point.privacy_status
             )
 
         return emotion_point
@@ -386,8 +416,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
 
-        # FIX: Automatyczne przypisanie location z EmotionPoint
-        # Jest to wymagane, ponieważ model Comment ma pole location NOT NULL
+        # Automatyczne przypisanie location z EmotionPoint
         if 'emotion_point' in validated_data:
             validated_data['location'] = validated_data['emotion_point'].location
 
