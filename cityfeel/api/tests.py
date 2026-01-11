@@ -637,8 +637,8 @@ class LocationAPITestCase(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('results', response.data)  # Pagination
-        self.assertEqual(len(response.data['results']), 3)
+        self.assertIsInstance(response.data, list)  # No pagination - direct array
+        self.assertEqual(len(response.data), 3)
 
     def test_list_locations_unauthenticated(self):
         """Test GET /api/locations/ - unauthorized returns 401/403."""
@@ -660,7 +660,7 @@ class LocationAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.url)
 
-        location_data = response.data['results'][0]
+        location_data = response.data[0]
         required_fields = ['id', 'name', 'coordinates', 'avg_emotional_value']
 
         for field in required_fields:
@@ -676,9 +676,9 @@ class LocationAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.url)
 
-        # Znajdź location1 w results
+        # Znajdź location1 w response
         location1_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location1.id),
+            (loc for loc in response.data if loc['id'] == self.location1.id),
             None
         )
 
@@ -693,7 +693,7 @@ class LocationAPITestCase(TestCase):
 
         # location3 ma: prywatny=4, publiczny=3, avg=(4+3)/2=3.5
         location3_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location3.id),
+            (loc for loc in response.data if loc['id'] == self.location3.id),
             None
         )
 
@@ -706,7 +706,7 @@ class LocationAPITestCase(TestCase):
         response = self.client.get(self.url)
 
         location2_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location2.id),
+            (loc for loc in response.data if loc['id'] == self.location2.id),
             None
         )
 
@@ -722,8 +722,8 @@ class LocationAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Powinny być 2 lokalizacje z "Gdańsk" w nazwie (location1)
         # Uwaga: plan wspominał o 2, ale w setup mamy tylko 1
-        self.assertGreaterEqual(len(response.data['results']), 1)
-        for loc in response.data['results']:
+        self.assertGreaterEqual(len(response.data), 1)
+        for loc in response.data:
             self.assertIn('Gdańsk', loc['name'])
 
     def test_filter_by_name_case_insensitive(self):
@@ -731,7 +731,7 @@ class LocationAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.url, {'name': 'gdańsk'})
 
-        self.assertGreaterEqual(len(response.data['results']), 1)
+        self.assertGreaterEqual(len(response.data), 1)
 
     def test_filter_by_radius(self):
         """Test ?lat=54.35&lon=18.64&radius=1000 (1km)."""
@@ -746,8 +746,8 @@ class LocationAPITestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Tylko location1 powinna być w tym promieniu
-        self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['id'], self.location1.id)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['id'], self.location1.id)
 
     def test_filter_by_radius_large_area(self):
         """Test radius=25000 (25km) - wszystkie 3 lokalizacje."""
@@ -761,7 +761,7 @@ class LocationAPITestCase(TestCase):
             'radius': 25000  # 25km
         })
 
-        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(len(response.data), 3)
 
     def test_filter_by_radius_missing_params(self):
         """Test z brakującymi parametrami - powinno zwrócić wszystkie."""
@@ -773,7 +773,7 @@ class LocationAPITestCase(TestCase):
             'lon': self.gdansk_lon,
         })
 
-        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(len(response.data), 3)
 
     def test_filter_by_radius_invalid_values(self):
         """Test z nieprawidłowymi wartościami - zwraca błąd lub pusty queryset."""
@@ -789,7 +789,7 @@ class LocationAPITestCase(TestCase):
         # Filter może zwrócić 400 (błąd walidacji) lub 200 z pustym queryset
         # Oba są akceptowalne
         if response.status_code == status.HTTP_200_OK:
-            self.assertEqual(len(response.data['results']), 0)
+            self.assertEqual(len(response.data), 0)
         else:
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -803,7 +803,7 @@ class LocationAPITestCase(TestCase):
         })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data), 2)
 
     def test_filter_by_bbox_invalid_format(self):
         """Test bbox z nieprawidłowym formatem - pusty queryset."""
@@ -811,11 +811,11 @@ class LocationAPITestCase(TestCase):
 
         # Zbyt mało wartości
         response = self.client.get(self.url, {'bbox': '18.5,54.3,18.65'})
-        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(len(response.data), 0)
 
         # Nieprawidłowy format
         response = self.client.get(self.url, {'bbox': 'invalid,bbox,format,here'})
-        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(len(response.data), 0)
 
     # --- READ-ONLY TESTS ---
     def test_post_not_allowed(self):
@@ -851,22 +851,8 @@ class LocationAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     # --- PAGINATION TESTS ---
-    def test_pagination_default_page_size(self):
-        """Test paginacji (15 lokalizacji, page_size=10)."""
-        self.client.force_authenticate(user=self.user)
-
-        # Utwórz 12 dodatkowych lokalizacji (12 + 3 istniejące = 15)
-        for i in range(12):
-            Location.objects.create(
-                name=f'Location {i}',
-                coordinates=Point(18.0 + i*0.01, 54.0 + i*0.01, srid=4326)
-            )
-
-        response = self.client.get(self.url)
-
-        self.assertEqual(len(response.data['results']), 10)  # PAGE_SIZE=10
-        self.assertIn('next', response.data)
-        self.assertIsNotNone(response.data['next'])
+    # UWAGA: Paginacja dla LocationViewSet została wyłączona (pagination_class = None),
+    # więc testy paginacji zostały usunięte. API zwraca prostą tablicę bez paginacji.
 
     # --- EDGE CASES ---
     def test_location_with_mixed_privacy_emotion_points(self):
@@ -878,7 +864,7 @@ class LocationAPITestCase(TestCase):
         response = self.client.get(self.url)
 
         location3_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location3.id),
+            (loc for loc in response.data if loc['id'] == self.location3.id),
             None
         )
 
@@ -890,7 +876,7 @@ class LocationAPITestCase(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.url)
 
-        results = response.data['results']
+        results = response.data
 
         # Sprawdź czy lokalizacje są posortowane po avg_emotional_value (malejąco)
         # Locations z wartościami powinny być przed null
