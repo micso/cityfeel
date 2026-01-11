@@ -1,0 +1,1854 @@
+[
+  {
+    "model": "map.location",
+    "pk": 1,
+    "fields": {
+      "name": "Molo w Sopocie",
+      "coordinates": "SRID=4326;POINT(18.5695 54.4438)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 2,
+    "fields": {
+      "name": "Krzywy Domek",
+      "coordinates": "SRID=4326;POINT(18.5672 54.442)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 3,
+    "fields": {
+      "name": "Plaża Sopocka",
+      "coordinates": "SRID=4326;POINT(18.57 54.4415)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 4,
+    "fields": {
+      "name": "Ulica Monte Cassino",
+      "coordinates": "SRID=4326;POINT(18.5665 54.4425)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 5,
+    "fields": {
+      "name": "Łazienki Północne Sopot",
+      "coordinates": "SRID=4326;POINT(18.568 54.4445)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 6,
+    "fields": {
+      "name": "Kawiarnia na Żeromskiego",
+      "coordinates": "SRID=4326;POINT(18.5668 54.4432)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 7,
+    "fields": {
+      "name": "Park Północny Sopot",
+      "coordinates": "SRID=4326;POINT(18.5675 54.445)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 8,
+    "fields": {
+      "name": "Opera Leśna",
+      "coordinates": "SRID=4326;POINT(18.562 54.438)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 9,
+    "fields": {
+      "name": "Sopockie Muszle",
+      "coordinates": "SRID=4326;POINT(18.5688 54.4412)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 10,
+    "fields": {
+      "name": "Restauracja Przystań Sopot",
+      "coordinates": "SRID=4326;POINT(18.571 54.4428)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 11,
+    "fields": {
+      "name": "Długi Targ",
+      "coordinates": "SRID=4326;POINT(18.6538 54.3489)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 12,
+    "fields": {
+      "name": "Bazylika Mariacka",
+      "coordinates": "SRID=4326;POINT(18.653 54.349)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 13,
+    "fields": {
+      "name": "Fontanna Neptuna",
+      "coordinates": "SRID=4326;POINT(18.6536 54.3486)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 14,
+    "fields": {
+      "name": "Złota Brama",
+      "coordinates": "SRID=4326;POINT(18.6525 54.3505)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 15,
+    "fields": {
+      "name": "Ulica Mariacka",
+      "coordinates": "SRID=4326;POINT(18.6545 54.3485)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 16,
+    "fields": {
+      "name": "Gdańskie Koło Widokowe",
+      "coordinates": "SRID=4326;POINT(18.6555 54.3492)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 17,
+    "fields": {
+      "name": "Muzeum Bursztynu",
+      "coordinates": "SRID=4326;POINT(18.652 54.351)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 18,
+    "fields": {
+      "name": "Kawiarnia Drukarnia",
+      "coordinates": "SRID=4326;POINT(18.6528 54.3495)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 19,
+    "fields": {
+      "name": "Molo w Gdyni",
+      "coordinates": "SRID=4326;POINT(18.5515 54.5195)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 20,
+    "fields": {
+      "name": "Bulwary Gdyńskie",
+      "coordinates": "SRID=4326;POINT(18.5505 54.518)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 21,
+    "fields": {
+      "name": "Akwarium Gdyńskie",
+      "coordinates": "SRID=4326;POINT(18.552 54.5188)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 22,
+    "fields": {
+      "name": "Plaża Miejska Gdynia",
+      "coordinates": "SRID=4326;POINT(18.5495 54.517)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 23,
+    "fields": {
+      "name": "Skwer Kościuszki",
+      "coordinates": "SRID=4326;POINT(18.554 54.519)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 24,
+    "fields": {
+      "name": "Marina Gdynia",
+      "coordinates": "SRID=4326;POINT(18.5525 54.5205)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 25,
+    "fields": {
+      "name": "Kamienica Żeromskiego",
+      "coordinates": "SRID=4326;POINT(18.5535 54.5175)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 26,
+    "fields": {
+      "name": "Parking Zaspa",
+      "coordinates": "SRID=4326;POINT(18.6125 54.3755)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 27,
+    "fields": {
+      "name": "Przystanek PKM Zaspa",
+      "coordinates": "SRID=4326;POINT(18.6145 54.3765)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 28,
+    "fields": {
+      "name": "Sklep Biedronka Zaspa",
+      "coordinates": "SRID=4326;POINT(18.613 54.375)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 29,
+    "fields": {
+      "name": "Osiedle Chełm",
+      "coordinates": "SRID=4326;POINT(18.598 54.395)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 30,
+    "fields": {
+      "name": "Parking Przymorze",
+      "coordinates": "SRID=4326;POINT(18.6025 54.405)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 31,
+    "fields": {
+      "name": "Dworzec PKS Wrzeszcz",
+      "coordinates": "SRID=4326;POINT(18.6085 54.382)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 32,
+    "fields": {
+      "name": "Galeria Metropolia",
+      "coordinates": "SRID=4326;POINT(18.601 54.402)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 33,
+    "fields": {
+      "name": "Rondo Sobótki",
+      "coordinates": "SRID=4326;POINT(18.6095 54.374)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 34,
+    "fields": {
+      "name": "Dworzec PKP Gdynia Główna",
+      "coordinates": "SRID=4326;POINT(18.5385 54.521)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 35,
+    "fields": {
+      "name": "Parking Chwarzno",
+      "coordinates": "SRID=4326;POINT(18.5245 54.5025)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 36,
+    "fields": {
+      "name": "Osiedle Witomino",
+      "coordinates": "SRID=4326;POINT(18.5185 54.5425)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 37,
+    "fields": {
+      "name": "Centrum Handlowe Klif",
+      "coordinates": "SRID=4326;POINT(18.5325 54.5295)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 38,
+    "fields": {
+      "name": "Sklep Żabka Chylonia",
+      "coordinates": "SRID=4326;POINT(18.5105 54.495)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 39,
+    "fields": {
+      "name": "Park Oliwski",
+      "coordinates": "SRID=4326;POINT(18.571 54.4075)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 40,
+    "fields": {
+      "name": "Westerplatte",
+      "coordinates": "SRID=4326;POINT(18.672 54.4065)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 41,
+    "fields": {
+      "name": "Ogród Botaniczny UG",
+      "coordinates": "SRID=4326;POINT(18.5795 54.3955)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 42,
+    "fields": {
+      "name": "Parking Oliwa",
+      "coordinates": "SRID=4326;POINT(18.5725 54.4085)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 43,
+    "fields": {
+      "name": "Plaża Stogi",
+      "coordinates": "SRID=4326;POINT(18.682 54.3615)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 44,
+    "fields": {
+      "name": "PKS Gdańsk Oliwa",
+      "coordinates": "SRID=4326;POINT(18.5705 54.409)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 45,
+    "fields": {
+      "name": "Jarmark Dominikański",
+      "coordinates": "SRID=4326;POINT(18.6585 54.3515)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 46,
+    "fields": {
+      "name": "Aquapark Sopot",
+      "coordinates": "SRID=4326;POINT(18.5455 54.4295)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 47,
+    "fields": {
+      "name": "Park Brodwino",
+      "coordinates": "SRID=4326;POINT(18.5555 54.4525)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 48,
+    "fields": {
+      "name": "SKM Sopot Kamienny Potok",
+      "coordinates": "SRID=4326;POINT(18.5525 54.4365)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 49,
+    "fields": {
+      "name": "Ergo Arena",
+      "coordinates": "SRID=4326;POINT(18.5815 54.4145)"
+    }
+  },
+  {
+    "model": "map.location",
+    "pk": 50,
+    "fields": {
+      "name": "Lidl Sopot Karlikowo",
+      "coordinates": "SRID=4326;POINT(18.5485 54.4335)"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "location": 1,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-11-17T15:03:57.855602",
+      "updated_at": "2025-11-17T15:03:57.855602"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 2,
+    "fields": {
+      "user": 8,
+      "location": 1,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-11-26T09:40:57.855639",
+      "updated_at": "2025-11-26T09:40:57.855639"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 3,
+    "fields": {
+      "user": 8,
+      "location": 2,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-11-17T03:47:57.855648",
+      "updated_at": "2025-11-17T03:47:57.855648"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 4,
+    "fields": {
+      "user": 1,
+      "location": 3,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-01T00:32:57.855654",
+      "updated_at": "2025-12-01T00:32:57.855654"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 5,
+    "fields": {
+      "user": 9,
+      "location": 4,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-23T12:43:57.855659",
+      "updated_at": "2025-12-23T12:43:57.855659"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 6,
+    "fields": {
+      "user": 1,
+      "location": 6,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-17T02:43:57.855664",
+      "updated_at": "2025-12-17T02:43:57.855664"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 7,
+    "fields": {
+      "user": 9,
+      "location": 6,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-11-18T10:28:57.855668",
+      "updated_at": "2025-11-18T10:28:57.855668"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 8,
+    "fields": {
+      "user": 10,
+      "location": 6,
+      "emotional_value": 4,
+      "privacy_status": "private",
+      "created_at": "2025-12-16T03:38:57.855671",
+      "updated_at": "2025-12-16T03:38:57.855671"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 9,
+    "fields": {
+      "user": 8,
+      "location": 7,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-09T22:46:57.855675",
+      "updated_at": "2025-12-09T22:46:57.855675"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 10,
+    "fields": {
+      "user": 9,
+      "location": 7,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2026-01-02T03:55:57.855678",
+      "updated_at": "2026-01-02T03:55:57.855678"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 11,
+    "fields": {
+      "user": 9,
+      "location": 9,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-12-16T00:28:57.855683",
+      "updated_at": "2025-12-16T00:28:57.855683"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 12,
+    "fields": {
+      "user": 10,
+      "location": 9,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2026-01-05T09:47:57.855686",
+      "updated_at": "2026-01-05T09:47:57.855686"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 13,
+    "fields": {
+      "user": 1,
+      "location": 10,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-11-20T14:15:57.855690",
+      "updated_at": "2025-11-20T14:15:57.855690"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 14,
+    "fields": {
+      "user": 1,
+      "location": 11,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-11T19:26:57.855694",
+      "updated_at": "2025-12-11T19:26:57.855694"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 15,
+    "fields": {
+      "user": 8,
+      "location": 11,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2026-01-02T13:46:57.855698",
+      "updated_at": "2026-01-02T13:46:57.855698"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 16,
+    "fields": {
+      "user": 9,
+      "location": 12,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-14T06:13:57.855701",
+      "updated_at": "2025-12-14T06:13:57.855701"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 17,
+    "fields": {
+      "user": 1,
+      "location": 13,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-11-23T06:10:57.855707",
+      "updated_at": "2025-11-23T06:10:57.855707"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 18,
+    "fields": {
+      "user": 1,
+      "location": 15,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-12-08T16:30:57.855712",
+      "updated_at": "2025-12-08T16:30:57.855712"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 19,
+    "fields": {
+      "user": 9,
+      "location": 15,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-30T17:53:57.855715",
+      "updated_at": "2025-12-30T17:53:57.855715"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 20,
+    "fields": {
+      "user": 1,
+      "location": 16,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2026-01-02T23:46:57.855719",
+      "updated_at": "2026-01-02T23:46:57.855719"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 21,
+    "fields": {
+      "user": 9,
+      "location": 16,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-25T17:37:57.855723",
+      "updated_at": "2025-12-25T17:37:57.855723"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 22,
+    "fields": {
+      "user": 1,
+      "location": 17,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-11-22T17:53:57.855727",
+      "updated_at": "2025-11-22T17:53:57.855727"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 23,
+    "fields": {
+      "user": 8,
+      "location": 18,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-06T06:26:57.855731",
+      "updated_at": "2025-12-06T06:26:57.855731"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 24,
+    "fields": {
+      "user": 10,
+      "location": 19,
+      "emotional_value": 4,
+      "privacy_status": "private",
+      "created_at": "2025-12-15T14:01:57.855735",
+      "updated_at": "2025-12-15T14:01:57.855735"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 25,
+    "fields": {
+      "user": 1,
+      "location": 19,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-07T21:35:57.855738",
+      "updated_at": "2025-12-07T21:35:57.855738"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 26,
+    "fields": {
+      "user": 8,
+      "location": 21,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-06T04:05:57.855743",
+      "updated_at": "2025-12-06T04:05:57.855743"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 27,
+    "fields": {
+      "user": 1,
+      "location": 21,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-11-25T15:39:57.855746",
+      "updated_at": "2025-11-25T15:39:57.855746"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 28,
+    "fields": {
+      "user": 9,
+      "location": 21,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2026-01-08T01:38:57.855749",
+      "updated_at": "2026-01-08T01:38:57.855749"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 29,
+    "fields": {
+      "user": 8,
+      "location": 22,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-27T18:34:57.855753",
+      "updated_at": "2025-12-27T18:34:57.855753"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 30,
+    "fields": {
+      "user": 10,
+      "location": 23,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-12-29T08:36:57.855757",
+      "updated_at": "2025-12-29T08:36:57.855757"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 31,
+    "fields": {
+      "user": 1,
+      "location": 23,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-12-14T20:47:57.855761",
+      "updated_at": "2025-12-14T20:47:57.855761"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 32,
+    "fields": {
+      "user": 1,
+      "location": 24,
+      "emotional_value": 5,
+      "privacy_status": "private",
+      "created_at": "2025-11-20T08:27:57.855765",
+      "updated_at": "2025-11-20T08:27:57.855765"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 33,
+    "fields": {
+      "user": 9,
+      "location": 24,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-13T07:15:57.855768",
+      "updated_at": "2025-12-13T07:15:57.855768"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 34,
+    "fields": {
+      "user": 10,
+      "location": 24,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-26T09:14:57.855772",
+      "updated_at": "2025-12-26T09:14:57.855772"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 35,
+    "fields": {
+      "user": 8,
+      "location": 24,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-07T11:37:57.855775",
+      "updated_at": "2025-12-07T11:37:57.855775"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 36,
+    "fields": {
+      "user": 8,
+      "location": 25,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-11-15T22:45:57.855781",
+      "updated_at": "2025-11-15T22:45:57.855781"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 37,
+    "fields": {
+      "user": 1,
+      "location": 25,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2026-01-09T23:26:57.855784",
+      "updated_at": "2026-01-09T23:26:57.855784"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 38,
+    "fields": {
+      "user": 10,
+      "location": 25,
+      "emotional_value": 5,
+      "privacy_status": "public",
+      "created_at": "2025-11-26T11:52:57.855787",
+      "updated_at": "2025-11-26T11:52:57.855787"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 39,
+    "fields": {
+      "user": 10,
+      "location": 26,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2026-01-06T16:55:57.855791",
+      "updated_at": "2026-01-06T16:55:57.855791"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 40,
+    "fields": {
+      "user": 1,
+      "location": 26,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2026-01-07T10:05:57.855795",
+      "updated_at": "2026-01-07T10:05:57.855795"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 41,
+    "fields": {
+      "user": 10,
+      "location": 27,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2025-12-09T08:48:57.855799",
+      "updated_at": "2025-12-09T08:48:57.855799"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 42,
+    "fields": {
+      "user": 9,
+      "location": 27,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2026-01-05T13:47:57.855802",
+      "updated_at": "2026-01-05T13:47:57.855802"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 43,
+    "fields": {
+      "user": 8,
+      "location": 28,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-11-14T17:27:57.855806",
+      "updated_at": "2025-11-14T17:27:57.855806"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 44,
+    "fields": {
+      "user": 1,
+      "location": 29,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2025-12-03T17:09:57.855810",
+      "updated_at": "2025-12-03T17:09:57.855810"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 45,
+    "fields": {
+      "user": 9,
+      "location": 30,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-16T07:00:57.855814",
+      "updated_at": "2025-12-16T07:00:57.855814"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 46,
+    "fields": {
+      "user": 8,
+      "location": 30,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-11-12T09:42:57.855817",
+      "updated_at": "2025-11-12T09:42:57.855817"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 47,
+    "fields": {
+      "user": 1,
+      "location": 30,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-05T08:38:57.855820",
+      "updated_at": "2025-12-05T08:38:57.855820"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 48,
+    "fields": {
+      "user": 8,
+      "location": 31,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-11-15T08:46:57.855825",
+      "updated_at": "2025-11-15T08:46:57.855825"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 49,
+    "fields": {
+      "user": 9,
+      "location": 31,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2025-12-30T20:49:57.855828",
+      "updated_at": "2025-12-30T20:49:57.855828"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 50,
+    "fields": {
+      "user": 10,
+      "location": 31,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-11-19T15:09:57.855831",
+      "updated_at": "2025-11-19T15:09:57.855831"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 51,
+    "fields": {
+      "user": 1,
+      "location": 32,
+      "emotional_value": 2,
+      "privacy_status": "private",
+      "created_at": "2026-01-04T07:26:57.855837",
+      "updated_at": "2026-01-04T07:26:57.855837"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 52,
+    "fields": {
+      "user": 9,
+      "location": 32,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-11-23T18:33:57.855840",
+      "updated_at": "2025-11-23T18:33:57.855840"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 53,
+    "fields": {
+      "user": 9,
+      "location": 33,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-12-27T14:02:57.855844",
+      "updated_at": "2025-12-27T14:02:57.855844"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 54,
+    "fields": {
+      "user": 8,
+      "location": 33,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-25T10:37:57.855847",
+      "updated_at": "2025-12-25T10:37:57.855847"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 55,
+    "fields": {
+      "user": 10,
+      "location": 34,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2026-01-01T15:26:57.855852",
+      "updated_at": "2026-01-01T15:26:57.855852"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 56,
+    "fields": {
+      "user": 8,
+      "location": 34,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-12-05T13:15:57.855855",
+      "updated_at": "2025-12-05T13:15:57.855855"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 57,
+    "fields": {
+      "user": 1,
+      "location": 34,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2025-11-14T12:45:57.855858",
+      "updated_at": "2025-11-14T12:45:57.855858"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 58,
+    "fields": {
+      "user": 8,
+      "location": 35,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-12-03T18:33:57.855862",
+      "updated_at": "2025-12-03T18:33:57.855862"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 59,
+    "fields": {
+      "user": 10,
+      "location": 36,
+      "emotional_value": 2,
+      "privacy_status": "private",
+      "created_at": "2025-11-21T09:45:57.855866",
+      "updated_at": "2025-11-21T09:45:57.855866"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 60,
+    "fields": {
+      "user": 1,
+      "location": 36,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-25T14:36:57.855870",
+      "updated_at": "2025-12-25T14:36:57.855870"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 61,
+    "fields": {
+      "user": 9,
+      "location": 36,
+      "emotional_value": 2,
+      "privacy_status": "private",
+      "created_at": "2025-11-14T22:03:57.855873",
+      "updated_at": "2025-11-14T22:03:57.855873"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 62,
+    "fields": {
+      "user": 8,
+      "location": 36,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-12-26T05:51:57.855876",
+      "updated_at": "2025-12-26T05:51:57.855876"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 63,
+    "fields": {
+      "user": 8,
+      "location": 37,
+      "emotional_value": 2,
+      "privacy_status": "private",
+      "created_at": "2025-12-14T13:47:57.855880",
+      "updated_at": "2025-12-14T13:47:57.855880"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 64,
+    "fields": {
+      "user": 10,
+      "location": 37,
+      "emotional_value": 1,
+      "privacy_status": "public",
+      "created_at": "2025-11-20T13:36:57.855884",
+      "updated_at": "2025-11-20T13:36:57.855884"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 65,
+    "fields": {
+      "user": 1,
+      "location": 37,
+      "emotional_value": 2,
+      "privacy_status": "private",
+      "created_at": "2025-11-16T20:28:57.855887",
+      "updated_at": "2025-11-16T20:28:57.855887"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 66,
+    "fields": {
+      "user": 9,
+      "location": 37,
+      "emotional_value": 1,
+      "privacy_status": "private",
+      "created_at": "2025-12-12T00:23:57.855890",
+      "updated_at": "2025-12-12T00:23:57.855890"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 67,
+    "fields": {
+      "user": 8,
+      "location": 39,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-16T01:25:57.855895",
+      "updated_at": "2025-12-16T01:25:57.855895"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 68,
+    "fields": {
+      "user": 1,
+      "location": 39,
+      "emotional_value": 2,
+      "privacy_status": "private",
+      "created_at": "2025-12-24T00:01:57.855898",
+      "updated_at": "2025-12-24T00:01:57.855898"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 69,
+    "fields": {
+      "user": 10,
+      "location": 40,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2026-01-09T07:46:57.855902",
+      "updated_at": "2026-01-09T07:46:57.855902"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 70,
+    "fields": {
+      "user": 9,
+      "location": 40,
+      "emotional_value": 3,
+      "privacy_status": "public",
+      "created_at": "2025-12-25T10:36:57.855905",
+      "updated_at": "2025-12-25T10:36:57.855905"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 71,
+    "fields": {
+      "user": 10,
+      "location": 42,
+      "emotional_value": 4,
+      "privacy_status": "private",
+      "created_at": "2025-12-13T16:10:57.855909",
+      "updated_at": "2025-12-13T16:10:57.855909"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 72,
+    "fields": {
+      "user": 8,
+      "location": 42,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-05T05:26:57.855913",
+      "updated_at": "2025-12-05T05:26:57.855913"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 73,
+    "fields": {
+      "user": 1,
+      "location": 45,
+      "emotional_value": 4,
+      "privacy_status": "public",
+      "created_at": "2025-12-07T17:59:57.855917",
+      "updated_at": "2025-12-07T17:59:57.855917"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 74,
+    "fields": {
+      "user": 8,
+      "location": 46,
+      "emotional_value": 3,
+      "privacy_status": "public",
+      "created_at": "2025-11-29T01:03:57.855921",
+      "updated_at": "2025-11-29T01:03:57.855921"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 75,
+    "fields": {
+      "user": 9,
+      "location": 47,
+      "emotional_value": 4,
+      "privacy_status": "private",
+      "created_at": "2025-11-25T02:10:57.855926",
+      "updated_at": "2025-11-25T02:10:57.855926"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 76,
+    "fields": {
+      "user": 9,
+      "location": 50,
+      "emotional_value": 3,
+      "privacy_status": "public",
+      "created_at": "2025-12-22T18:34:57.855931",
+      "updated_at": "2025-12-22T18:34:57.855931"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 77,
+    "fields": {
+      "user": 10,
+      "location": 50,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-16T13:55:57.855934",
+      "updated_at": "2025-12-16T13:55:57.855934"
+    }
+  },
+  {
+    "model": "emotions.emotionpoint",
+    "pk": 78,
+    "fields": {
+      "user": 8,
+      "location": 50,
+      "emotional_value": 2,
+      "privacy_status": "public",
+      "created_at": "2025-12-21T23:07:57.855938",
+      "updated_at": "2025-12-21T23:07:57.855938"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 1,
+    "fields": {
+      "user": 8,
+      "location": 1,
+      "emotion_point": null,
+      "content": "Najpiękniejsze miejsce w Trójmieście!",
+      "privacy_status": "public",
+      "created_at": "2026-01-01T11:40:57.855954"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 2,
+    "fields": {
+      "user": 8,
+      "location": 20,
+      "emotion_point": null,
+      "content": "Przepięknie tutaj, polecam w 100%!",
+      "privacy_status": "public",
+      "created_at": "2025-12-11T21:46:57.855959"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 3,
+    "fields": {
+      "user": 8,
+      "location": 19,
+      "emotion_point": null,
+      "content": "Świetne miejsce, super klimat!",
+      "privacy_status": "private",
+      "created_at": "2025-12-26T07:01:57.855964"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 4,
+    "fields": {
+      "user": 1,
+      "location": 14,
+      "emotion_point": null,
+      "content": "Spoko miejsce, dobra atmosfera.",
+      "privacy_status": "public",
+      "created_at": "2025-12-29T13:09:57.855967"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 5,
+    "fields": {
+      "user": 10,
+      "location": 28,
+      "emotion_point": null,
+      "content": "Koszmar! Straszne miejsce.",
+      "privacy_status": "public",
+      "created_at": "2025-11-13T08:13:57.855972"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 6,
+    "fields": {
+      "user": 8,
+      "location": 38,
+      "emotion_point": null,
+      "content": "Średnio utrzymane.",
+      "privacy_status": "private",
+      "created_at": "2025-11-22T21:03:57.855976"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 7,
+    "fields": {
+      "user": 10,
+      "location": 39,
+      "emotion_point": null,
+      "content": "Czysto, zadbane, polecam.",
+      "privacy_status": "public",
+      "created_at": "2025-11-23T20:14:57.855979"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 8,
+    "fields": {
+      "user": 9,
+      "location": 42,
+      "emotion_point": null,
+      "content": "Przeciętnie, nic ciekawego.",
+      "privacy_status": "private",
+      "created_at": "2025-12-01T04:25:57.855983"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 9,
+    "fields": {
+      "user": 10,
+      "location": 21,
+      "emotion_point": null,
+      "content": "Bardzo mi się podobało!",
+      "privacy_status": "public",
+      "created_at": "2025-12-24T01:22:57.855986"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 10,
+    "fields": {
+      "user": 1,
+      "location": 30,
+      "emotion_point": null,
+      "content": "Strata czasu i pieniędzy.",
+      "privacy_status": "public",
+      "created_at": "2025-12-16T13:33:57.855990"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 11,
+    "fields": {
+      "user": 8,
+      "location": 29,
+      "emotion_point": null,
+      "content": "Tłoczno, hałaśliwie, nieznośnie.",
+      "privacy_status": "private",
+      "created_at": "2025-12-19T18:13:57.855993"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 12,
+    "fields": {
+      "user": 10,
+      "location": 29,
+      "emotion_point": null,
+      "content": "Tragedia, bardzo źle.",
+      "privacy_status": "private",
+      "created_at": "2025-12-16T16:58:57.855997"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 13,
+    "fields": {
+      "user": 1,
+      "location": 40,
+      "emotion_point": null,
+      "content": "Spoko miejsce, dobra atmosfera.",
+      "privacy_status": "private",
+      "created_at": "2026-01-10T00:23:57.856000"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 14,
+    "fields": {
+      "user": 10,
+      "location": 40,
+      "emotion_point": null,
+      "content": "Takie sobie.",
+      "privacy_status": "public",
+      "created_at": "2025-12-10T04:25:57.856003"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 15,
+    "fields": {
+      "user": 10,
+      "location": 47,
+      "emotion_point": null,
+      "content": "W porządku, nic specjalnego.",
+      "privacy_status": "private",
+      "created_at": "2025-12-19T13:59:57.856006"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 16,
+    "fields": {
+      "user": 10,
+      "location": 47,
+      "emotion_point": null,
+      "content": "Przyjemne miejsce, spędziłem tu świetny czas.",
+      "privacy_status": "private",
+      "created_at": "2025-11-13T07:03:57.856010"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 17,
+    "fields": {
+      "user": 1,
+      "location": 33,
+      "emotion_point": null,
+      "content": "Mogło być zdecydowanie lepiej.",
+      "privacy_status": "public",
+      "created_at": "2026-01-04T15:15:57.856014"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 18,
+    "fields": {
+      "user": 8,
+      "location": 33,
+      "emotion_point": null,
+      "content": "Nie wrócę tu ponownie.",
+      "privacy_status": "public",
+      "created_at": "2025-12-24T23:22:57.856017"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 19,
+    "fields": {
+      "user": 8,
+      "location": 31,
+      "emotion_point": null,
+      "content": "Niezbyt, są lepsze miejsca.",
+      "privacy_status": "private",
+      "created_at": "2025-11-22T23:25:57.856021"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 20,
+    "fields": {
+      "user": 10,
+      "location": 31,
+      "emotion_point": null,
+      "content": "Rozczarowanie, spodziewałem się więcej.",
+      "privacy_status": "private",
+      "created_at": "2026-01-08T12:08:57.856024"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 21,
+    "fields": {
+      "user": 1,
+      "location": 11,
+      "emotion_point": null,
+      "content": "Najpiękniejsze miejsce w Trójmieście!",
+      "privacy_status": "public",
+      "created_at": "2025-11-21T15:40:57.856027"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 22,
+    "fields": {
+      "user": 1,
+      "location": 11,
+      "emotion_point": null,
+      "content": "Ładne miejsce, polecam na spacer.",
+      "privacy_status": "public",
+      "created_at": "2025-12-02T07:27:57.856030"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 23,
+    "fields": {
+      "user": 8,
+      "location": 6,
+      "emotion_point": null,
+      "content": "Absolutnie przepiękne! Wrócę tu na pewno.",
+      "privacy_status": "public",
+      "created_at": "2025-12-11T13:26:57.856034"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 24,
+    "fields": {
+      "user": 9,
+      "location": 6,
+      "emotion_point": null,
+      "content": "Polecam, naprawdę warto!",
+      "privacy_status": "public",
+      "created_at": "2025-11-22T06:23:57.856037"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 25,
+    "fields": {
+      "user": 1,
+      "location": 48,
+      "emotion_point": null,
+      "content": "Bardzo fajnie, polecam!",
+      "privacy_status": "private",
+      "created_at": "2025-12-04T13:44:57.856040"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 26,
+    "fields": {
+      "user": 10,
+      "location": 48,
+      "emotion_point": null,
+      "content": "Można przyjść, ale nie jest to must-see.",
+      "privacy_status": "public",
+      "created_at": "2025-12-03T12:49:57.856044"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 27,
+    "fields": {
+      "user": 8,
+      "location": 48,
+      "emotion_point": null,
+      "content": "Przeciętnie, nic ciekawego.",
+      "privacy_status": "public",
+      "created_at": "2025-11-20T16:52:57.856047"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 28,
+    "fields": {
+      "user": 1,
+      "location": 22,
+      "emotion_point": null,
+      "content": "Rewelacja! Najlepsze miejsce ever.",
+      "privacy_status": "private",
+      "created_at": "2025-11-29T00:38:57.856050"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 29,
+    "fields": {
+      "user": 9,
+      "location": 22,
+      "emotion_point": null,
+      "content": "Spoko miejsce, dobra atmosfera.",
+      "privacy_status": "private",
+      "created_at": "2026-01-03T22:19:57.856054"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 30,
+    "fields": {
+      "user": 10,
+      "location": 22,
+      "emotion_point": null,
+      "content": "Spoko miejsce, dobra atmosfera.",
+      "privacy_status": "public",
+      "created_at": "2025-11-24T19:01:57.856057"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 31,
+    "fields": {
+      "user": 9,
+      "location": 3,
+      "emotion_point": null,
+      "content": "Świetne miejsce, super klimat!",
+      "privacy_status": "private",
+      "created_at": "2025-11-18T12:05:57.856060"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 32,
+    "fields": {
+      "user": 9,
+      "location": 3,
+      "emotion_point": null,
+      "content": "Najpiękniejsze miejsce w Trójmieście!",
+      "privacy_status": "public",
+      "created_at": "2025-12-23T21:27:57.856063"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 33,
+    "fields": {
+      "user": 10,
+      "location": 3,
+      "emotion_point": null,
+      "content": "Idealne na romantyczny spacer.",
+      "privacy_status": "public",
+      "created_at": "2025-12-10T01:31:57.856067"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 34,
+    "fields": {
+      "user": 1,
+      "location": 37,
+      "emotion_point": 63,
+      "content": "To prawda, tak było.",
+      "privacy_status": "private",
+      "created_at": "2025-12-23T06:47:57.855880"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 35,
+    "fields": {
+      "user": 8,
+      "location": 21,
+      "emotion_point": 28,
+      "content": "Ciekawe, ja miałem zupełnie inne wrażenia.",
+      "privacy_status": "private",
+      "created_at": "2026-01-16T15:38:57.855749"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 36,
+    "fields": {
+      "user": 1,
+      "location": 30,
+      "emotion_point": 46,
+      "content": "Zgadzam się w 100%!",
+      "privacy_status": "private",
+      "created_at": "2025-11-16T21:42:57.855817"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 37,
+    "fields": {
+      "user": 8,
+      "location": 24,
+      "emotion_point": 34,
+      "content": "Podzielam twoją opinię.",
+      "privacy_status": "private",
+      "created_at": "2026-01-04T02:14:57.855772"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 38,
+    "fields": {
+      "user": 9,
+      "location": 29,
+      "emotion_point": 44,
+      "content": "Ja też tak uważam.",
+      "privacy_status": "private",
+      "created_at": "2025-12-10T15:09:57.855810"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 39,
+    "fields": {
+      "user": 10,
+      "location": 25,
+      "emotion_point": 36,
+      "content": "Podzielam twoją opinię.",
+      "privacy_status": "private",
+      "created_at": "2025-11-21T05:45:57.855781"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 40,
+    "fields": {
+      "user": 1,
+      "location": 45,
+      "emotion_point": 73,
+      "content": "Ciekawe, ja miałem zupełnie inne wrażenia.",
+      "privacy_status": "public",
+      "created_at": "2025-12-13T20:59:57.855917"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 41,
+    "fields": {
+      "user": 8,
+      "location": 1,
+      "emotion_point": 2,
+      "content": "To prawda, tak było.",
+      "privacy_status": "public",
+      "created_at": "2025-12-04T17:40:57.855639"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 42,
+    "fields": {
+      "user": 9,
+      "location": 39,
+      "emotion_point": 67,
+      "content": "Zgadzam się w 100%!",
+      "privacy_status": "public",
+      "created_at": "2025-12-21T08:25:57.855895"
+    }
+  },
+  {
+    "model": "emotions.comment",
+    "pk": 43,
+    "fields": {
+      "user": 9,
+      "location": 19,
+      "emotion_point": 25,
+      "content": "Mam podobne odczucia.",
+      "privacy_status": "private",
+      "created_at": "2025-12-09T19:35:57.855738"
+    }
+  }
+]
