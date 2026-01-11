@@ -42,10 +42,10 @@ class EmotionPointViewSet(ModelViewSet):
 class LocationViewSet(ReadOnlyModelViewSet):
     """
     ViewSet dla endpointu /api/locations/ (READ-ONLY).
-    
+
     Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
     Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
-    
+
     Filtrowanie:
     - ?name=Gdańsk - filtrowanie po nazwie (icontains)
     - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
@@ -55,6 +55,7 @@ class LocationViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = LocationFilter
+    pagination_class = None  # Wyłącz paginację - wszystkie lokalizacje w bounding box
 
     def get_queryset(self):
         return (

@@ -221,7 +221,9 @@ function initFilters() {
         return response.json();
       })
       .then(data => {
-        displayLocations(data.results || []);
+        // Obsługa odpowiedzi bez paginacji (tablica) i z paginacją (obiekt z results)
+        const locations = Array.isArray(data) ? data : (data.results || []);
+        displayLocations(locations);
       })
       .catch(error => {
         console.error('Error fetching locations:', error);
