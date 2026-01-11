@@ -450,9 +450,7 @@ paths:
         schema:
           type: array
           items:
-            type: integer
-            maximum: 5
-            minimum: 1
+            type: string
         description: Wiele wartości można rozdzielić przecinkami
         explode: false
         style: form
@@ -719,6 +717,9 @@ components:
         username:
           type: string
           readOnly: true
+        comment:
+          type: string
+          writeOnly: true
       required:
       - emotional_value
       - id
@@ -843,7 +844,7 @@ components:
         latest_comment:
           type: object
           nullable: true
-          description: Ostatni publiczny komentarz dodany w tej lokalizacji.
+          description: Ostatni komentarz (publiczny lub prywatny) dodany w tej lokalizacji.
           properties:
             username:
               type: string
@@ -937,6 +938,9 @@ components:
         username:
           type: string
           readOnly: true
+        comment:
+          type: string
+          writeOnly: true
     PatchedFriendship:
       type: object
       description: Serializer dla modelu Friendship (zaproszenia do znajomych).
