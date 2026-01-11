@@ -90,7 +90,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
 
         response = self.client.get('/api/locations/')
 
-        location_data = next((loc for loc in response.data['results'] if loc['id'] == self.location.id), None)
+        location_data = next((loc for loc in response.data if loc['id'] == self.location.id), None)
         self.assertEqual(float(location_data['avg_emotional_value']), 4.0)
         self.assertEqual(location_data['emotion_points_count'], 2)
 
@@ -112,7 +112,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
         )
 
         response = self.client.get('/api/locations/')
-        loc = response.data['results'][0]
+        loc = response.data[0]
         self.assertEqual(float(loc['avg_emotional_value']), 3.0)
 
     def test_public_emotion_visible_in_api_emotion_points(self):
@@ -176,7 +176,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
         )
 
         response = self.client.get('/api/locations/')
-        loc = response.data['results'][0]
+        loc = response.data[0]
         # Oczekujemy 1, bo drugi jest prywatny
         self.assertEqual(loc['comments_count'], 1)
 
@@ -213,7 +213,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
         )
 
         response = self.client.get('/api/locations/')
-        loc = response.data['results'][0]
+        loc = response.data[0]
         # Ponieważ 'Visible' został utworzony później, on jest najnowszy.
         # Gdyby 'Secret' był nowszy, API zwróciłoby go jako 'Anonim' (zgodnie z nową logiką)
         # Ten test weryfikuje głównie poprawne sortowanie i dostępność
@@ -243,7 +243,7 @@ class PrivacyLogicIntegrationTestCase(TestCase):
         )
 
         response = self.client.get('/api/locations/')
-        self.assertEqual(response.data['results'][0]['comments_count'], 2)
+        self.assertEqual(response.data[0]['comments_count'], 2)
 
     # =========================================================================
     # 2. PHOTOS
@@ -456,5 +456,5 @@ class PrivacyLogicIntegrationTestCase(TestCase):
         Photo.objects.create(user=self.user, location=self.location, image='p.jpg')
 
         response = self.client.get('/api/locations/')
-        loc = response.data['results'][0]
+        loc = response.data[0]
         self.assertEqual(loc['emotion_points_count'], 0)

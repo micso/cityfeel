@@ -268,7 +268,7 @@ class LocationStatisticsFlowTestCase(TestCase):
         # Sprawdź początkowe statystyki (brak ocen)
         response = client.get('/api/locations/')
         location_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location.id),
+            (loc for loc in response.data if loc['id'] == self.location.id),
             None
         )
         self.assertIsNone(location_data['avg_emotional_value'])
@@ -283,7 +283,7 @@ class LocationStatisticsFlowTestCase(TestCase):
 
         response = client.get('/api/locations/')
         location_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location.id),
+            (loc for loc in response.data if loc['id'] == self.location.id),
             None
         )
         self.assertEqual(float(location_data['avg_emotional_value']), 5.0)
@@ -298,7 +298,7 @@ class LocationStatisticsFlowTestCase(TestCase):
 
         response = client.get('/api/locations/')
         location_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location.id),
+            (loc for loc in response.data if loc['id'] == self.location.id),
             None
         )
         # avg = (5 + 3) / 2 = 4.0
@@ -344,7 +344,7 @@ class CommentFlowTestCase(TestCase):
         # Sprawdź że widoczny w API locations latest_comment
         response = client.get('/api/locations/')
         location_data = next(
-            (loc for loc in response.data['results'] if loc['id'] == self.location.id),
+            (loc for loc in response.data if loc['id'] == self.location.id),
             None
         )
 
