@@ -466,12 +466,6 @@ paths:
         name: name
         schema:
           type: string
-      - name: page
-        required: false
-        in: query
-        description: A page number within the paginated result set.
-        schema:
-          type: integer
       - in: query
         name: radius
         schema:
@@ -485,7 +479,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedLocationListList'
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationList'
           description: ''
   /api/locations/{id}/:
     get:
@@ -891,29 +887,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EmotionPoint'
-    PaginatedLocationListList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=4
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=2
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/LocationList'
     PatchedEmotionPoint:
       type: object
       properties:
