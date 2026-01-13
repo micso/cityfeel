@@ -30,128 +30,127 @@
                     data-value="1" title="Okropnie" style="width: 38px; height: 38px; padding: 0;">
                 1
             </button>
-
             <button class="btn btn-outline-emo-2 filter-btn fw-bold rounded-circle d-flex align-items-center justify-content-center"
                     data-value="2" title="Źle" style="width: 38px; height: 38px; padding: 0;">
                 2
             </button>
-
             <button class="btn btn-outline-emo-3 filter-btn fw-bold rounded-circle d-flex align-items-center justify-content-center"
                     data-value="3" title="Średnio" style="width: 38px; height: 38px; padding: 0;">
                 3
             </button>
-
             <button class="btn btn-outline-emo-4 filter-btn fw-bold rounded-circle d-flex align-items-center justify-content-center"
                     data-value="4" title="Dobrze" style="width: 38px; height: 38px; padding: 0;">
                 4
             </button>
-
             <button class="btn btn-outline-emo-5 filter-btn fw-bold rounded-circle d-flex align-items-center justify-content-center"
                     data-value="5" title="Super" style="width: 38px; height: 38px; padding: 0;">
                 5
             </button>
         </div>
     </div>
+
+    <div id="map-controls"
+         class="position-absolute bg-white shadow-sm p-3 rounded"
+         style="bottom: 30px; left: 20px; z-index: 1000; width: 250px; backdrop-filter: blur(5px); background: rgba(255, 255, 255, 0.9);">
+
+        <h6 class="fw-bold mb-3 border-bottom pb-2">Widok Mapy</h6>
+
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="heatmapToggle">
+            <label class="form-check-label fw-semibold" for="heatmapToggle">Włącz Heatmapę</label>
+        </div>
+
+        <div id="heatmapSettings" class="d-none">
+            <label for="heatmapRadius" class="form-label small text-muted mb-1">Promień (Radius)</label>
+            <input type="range" class="form-range" min="10" max="100" value="25" id="heatmapRadius">
+            <div class="d-flex justify-content-between text-muted x-small" style="font-size: 0.7rem;">
+                <span>Mały</span>
+                <span>Duży</span>
+            </div>
+            <div class="mt-2 p-2 bg-light rounded small text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Im cieplej tym weselej :)
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="addEmotionModal" tabindex="-1" aria-labelledby="addEmotionModalLabel" aria-hidden="true" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header border-0">
-        <h5 class="modal-title" id="addEmotionModalLabel">Oceń to miejsce</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
-      </div>
-
-      <div class="modal-body">
-        <div id="proximityInfo" class="alert d-none mb-3" role="alert">
-          <span id="proximityText"></span>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="addEmotionModalLabel">Oceń to miejsce</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+            </div>
+            <div class="modal-body">
+                <div id="proximityInfo" class="alert d-none mb-3" role="alert"><span id="proximityText"></span></div>
+                <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
+                <div class="mb-3 d-none" id="locationNameContainer">
+                    <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
+                    <input type="text" class="form-control" id="locationName" name="location_name" maxlength="200" placeholder="np. Park Oliwski...">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Twoja ocena <span class="text-danger">*</span></label>
+                    <div class="star-rating" id="starRating">
+                        <input type="radio" name="emotional_value" id="star5" value="5" required><label for="star5">★</label>
+                        <input type="radio" name="emotional_value" id="star4" value="4"><label for="star4">★</label>
+                        <input type="radio" name="emotional_value" id="star3" value="3"><label for="star3">★</label>
+                        <input type="radio" name="emotional_value" id="star2" value="2"><label for="star2">★</label>
+                        <input type="radio" name="emotional_value" id="star1" value="1"><label for="star1">★</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="emotionComment" class="form-label fw-semibold">Komentarz (opcjonalnie)</label>
+                    <textarea class="form-control" id="emotionComment" rows="2" placeholder="Napisz co myślisz o tym miejscu..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Prywatność</label>
+                    <select class="form-select" id="privacyStatus" name="privacy_status">
+                        <option value="public" selected>Publiczna - z Twoim imieniem</option>
+                        <option value="private">Prywatna - anonimowa</option>
+                    </select>
+                </div>
+                <div class="text-muted small"><strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="button" class="btn btn-primary" id="submitEmotion">
+                    <span id="submitText">Dodaj ocenę</span>
+                    <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
         </div>
-
-        <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
-
-        <div class="mb-3 d-none" id="locationNameContainer">
-          <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
-          <input type="text" class="form-control" id="locationName" name="location_name" maxlength="200" placeholder="np. Park Oliwski...">
-        </div>
-
-        <div class="mb-4">
-          <label class="form-label fw-semibold">Twoja ocena <span class="text-danger">*</span></label>
-          <div class="star-rating" id="starRating">
-            <input type="radio" name="emotional_value" id="star5" value="5" required>
-            <label for="star5" title="Bardzo pozytywnie (5)">★</label>
-            <input type="radio" name="emotional_value" id="star4" value="4">
-            <label for="star4" title="Pozytywnie (4)">★</label>
-            <input type="radio" name="emotional_value" id="star3" value="3">
-            <label for="star3" title="Neutralnie (3)">★</label>
-            <input type="radio" name="emotional_value" id="star2" value="2">
-            <label for="star2" title="Negatywnie (2)">★</label>
-            <input type="radio" name="emotional_value" id="star1" value="1">
-            <label for="star1" title="Bardzo negatywnie (1)">★</label>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label for="emotionComment" class="form-label fw-semibold">Komentarz (opcjonalnie)</label>
-          <textarea class="form-control" id="emotionComment" rows="2" placeholder="Napisz co myślisz o tym miejscu..."></textarea>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Prywatność</label>
-          <select class="form-select" id="privacyStatus" name="privacy_status">
-            <option value="public" selected>Publiczna - z Twoim imieniem</option>
-            <option value="private">Prywatna - anonimowa</option>
-          </select>
-        </div>
-
-        <div class="text-muted small">
-          <strong>Współrzędne:</strong> <span id="coordinatesDisplay">-</span>
-        </div>
-      </div>
-
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-        <button type="button" class="btn btn-primary" id="submitEmotion">
-          <span id="submitText">Dodaj ocenę</span>
-          <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
-        </button>
-      </div>
     </div>
-  </div>
 </div>
 
 <div class="toast-container position-fixed top-0 end-0 p-3">
-  <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="d-flex">
-      <div class="toast-body" id="successMessage">
-        Twoja ocena została zapisana!
-      </div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Zamknij"></button>
+    <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="successMessage">Twoja ocena została zapisana!</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Zamknij"></button>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // Definiujemy granice świata, aby zablokować "world wrapping" (powielanie mapy)
-  var southWest = L.latLng(-90, -180);
-  var northEast = L.latLng(90, 180);
-  var bounds = L.latLngBounds(southWest, northEast);
+    var southWest = L.latLng(-90, -180);
+    var northEast = L.latLng(90, 180);
+    var bounds = L.latLngBounds(southWest, northEast);
 
-  // Initialize Leaflet map (global variable for map.js)
-  window.map = L.map('map', {
-    worldCopyJump: true  // Automatycznie normalizuje pozycję mapy po okrążeniu Ziemi
-  }).setView([54.3755425, 18.6088834], 12);
+    window.map = L.map('map', { worldCopyJump: true }).setView([54.3755425, 18.6088834], 12);
 
-  // Add OpenStreetMap tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19,
-    minZoom: 3,
-    noWrap: true, // Kluczowe: nie powielaj kafelków w poziomie
-    bounds: bounds
-  }).addTo(window.map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+        minZoom: 3,
+        noWrap: true,
+        bounds: bounds
+    }).addTo(window.map);
 </script>
+
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
 <script src="{% static 'js/map.js' %}"></script>
 {% endblock %}
