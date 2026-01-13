@@ -29,7 +29,7 @@
             DEFAULT_RADIUS: 30,
             DEFAULT_BLUR: 20,
             MAX_ZOOM: 16,
-            // Gradient: Unikamy czerwonego na szczycie (bo czerwony marker = źle)
+            // Gradient: Unikamy czerwonego na szczycie
             // Blue (chłodno) -> Cyan -> Yellow -> Lime (najcieplej/najlepiej)
             GRADIENT: {
                 0.4: 'blue',
@@ -49,7 +49,7 @@
     // NOWE: Stan Heatmapy
     let heatLayer = null;
     let isHeatmapActive = false;
-    let currentLocationsData = []; // Cache danych do przełączania widoku
+    let currentLocationsData = []; // Cache danych do przełączania widoku i sprawdzania bliskości
 
     // Stan filtrów
     let activeFilters = [];
@@ -78,7 +78,7 @@
         }
 
         initFilters();
-        initHeatmapControls(); // NOWE: Inicjalizacja UI heatmapy
+        initHeatmapControls(); // NOWE: UI Heatmapy
 
         // Cluster group
         markerClusterGroup = L.markerClusterGroup({
@@ -89,7 +89,7 @@
             iconCreateFunction: createClusterIcon
         });
 
-        // NOWE: Inicjalizacja warstwy Heatmapy (jeśli plugin dostępny)
+        // NOWE: Warstwa Heatmapy
         if (typeof L.heatLayer === 'function') {
             heatLayer = L.heatLayer([], {
                 radius: CONFIG.HEATMAP.DEFAULT_RADIUS,
@@ -97,8 +97,6 @@
                 maxZoom: CONFIG.HEATMAP.MAX_ZOOM,
                 gradient: CONFIG.HEATMAP.GRADIENT
             });
-        } else {
-            console.warn('Leaflet.heat plugin not loaded');
         }
 
         map.addLayer(markerClusterGroup);
@@ -257,7 +255,7 @@
                 // Obsługa odpowiedzi bez paginacji (tablica) i z paginacją (obiekt z results)
                 const locations = Array.isArray(data) ? data : (data.results || []);
 
-                // NOWE: Zapisz dane do cache
+                // NOWE: Zapisz do cache
                 currentLocationsData = locations;
 
                 // NOWE: Decyzja co wyświetlić
@@ -483,34 +481,23 @@
         const proximityText = document.getElementById('proximityText');
         const locationNameContainer = document.getElementById('locationNameContainer');
 
-        // Pobierz wszystkie markery z cluster group
-        const allMarkers = markerClusterGroup.getLayers();
-
-        // Znajdź najbliższy marker w promieniu
-        let closestMarker = null;
+        // POPRAWKA: Sprawdzamy dane w pamięci (currentLocationsData) a nie markery
+        // Dzięki temu działa to także, gdy Heatmapa jest włączona i markery są ukryte.
+        let closestLocation = null;
         let minDistance = Infinity;
 
-        allMarkers.forEach(marker => {
-            const markerLatLng = marker.getLatLng();
-            const distance = map.distance([lat, lng], markerLatLng);
-
-            if (distance < proximityRadius && distance < minDistance) {
-                minDistance = distance;
-                closestMarker = marker;
+        currentLocationsData.forEach(loc => {
+            const dist = map.distance([lat, lng], [loc.coordinates.latitude, loc.coordinates.longitude]);
+            if (dist < proximityRadius && dist < minDistance) {
+                minDistance = dist;
+                closestLocation = loc;
             }
         });
 
         // Pokaż info jeśli znaleziono bliską lokalizację
-        if (closestMarker) {
-            const popupContent = closestMarker.getPopup().getContent();
-
-            // Wyciągnij nazwę lokalizacji z popup HTML (parsing)
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = popupContent;
-            const locationName = tempDiv.querySelector('h6').textContent;
-
+        if (closestLocation) {
             proximityText.textContent =
-                `Twoja ocena zostanie przypisana do: "${locationName}" (${Math.round(minDistance)}m od kliknięcia)`;
+                `Twoja ocena zostanie przypisana do: "${closestLocation.name}" (${Math.round(minDistance)}m od kliknięcia)`;
             proximityInfo.classList.remove('d-none');
             proximityInfo.classList.add('alert-info');
 
@@ -653,8 +640,15 @@
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                handleApiErrors(errorData);
+                // Sprawdź czy odpowiedź to JSON
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorData = await response.json();
+                    handleApiErrors(errorData);
+                } else {
+                    console.error('SERVER ERROR (HTML):', await response.text());
+                    throw new Error(`Błąd serwera (${response.status}). Zobacz konsolę (F12) po szczegóły.`);
+                }
                 return;
             }
 
@@ -663,7 +657,7 @@
 
         } catch (error) {
             console.error('Network error:', error);
-            showEmotionError('Błąd połączenia. Sprawdź połączenie internetowe i spróbuj ponownie.');
+            showEmotionError(error.message || 'Błąd połączenia. Sprawdź połączenie internetowe i spróbuj ponownie.');
         } finally {
             submitBtn.disabled = false;
             submitText.classList.remove('d-none');
