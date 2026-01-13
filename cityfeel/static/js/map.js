@@ -29,13 +29,12 @@
             DEFAULT_RADIUS: 30,
             DEFAULT_BLUR: 20,
             MAX_ZOOM: 16,
-            // Gradient: Unikamy czerwonego na szczycie
-            // Blue (chłodno) -> Cyan -> Yellow -> Lime (najcieplej/najlepiej)
+            // Gradient: Blue (chłodno) -> Yellow -> Red (gorąco/najlepiej)
             GRADIENT: {
                 0.4: 'blue',
-                0.6: 'cyan',
+                0.6: 'lime',   // Przejściowy zielony dla płynności
                 0.8: 'yellow',
-                1.0: 'lime'
+                1.0: 'red'     // Czerwony na szczycie skali (max)
             }
         }
     };
