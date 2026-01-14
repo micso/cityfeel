@@ -32,9 +32,9 @@
             // Gradient: Blue (chłodno) -> Yellow -> Red (gorąco/najlepiej)
             GRADIENT: {
                 0.4: 'blue',
-                0.6: 'lime',   // Przejściowy zielony dla płynności
+                0.6: 'red',   // Przejściowy zielony dla płynności
                 0.8: 'yellow',
-                1.0: 'red'     // Czerwony na szczycie skali (max)
+                1.0: 'lime'     // Czerwony na szczycie skali (max)
             }
         }
     };
