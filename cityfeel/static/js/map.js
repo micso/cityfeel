@@ -25,6 +25,7 @@
         },
 
         // 3 ODDZIELNE WARSTWY HEATMAPY
+        // Dzięki temu kolory się nie mieszają (czerwone punkty pozostają czerwone)
         HEATMAP: {
             RADIUS: 35,
             BLUR: 20,
@@ -34,7 +35,7 @@
             // Warstwa ZŁA (1.0 - 2.5) -> Odcienie czerwieni
             GRADIENT_BAD: {
                 0.4: '#e74c3c', // Czerwony
-                1.0: '#b03a2e'  // Ciemny Czerwony
+                1.0: '#b03a2e'  // Ciemny Czerwony (przy dużym zagęszczeniu)
             },
             // Warstwa NEUTRALNA (2.5 - 3.5) -> Odcienie żółtego
             GRADIENT_NEUTRAL: {
@@ -113,6 +114,7 @@
         map.addLayer(markerClusterGroup);
         map.on('moveend', debounce(loadVisibleLocations, CONFIG.DEBOUNCE_DELAY));
 
+        // Pierwsze ładowanie
         loadVisibleLocations();
     }
 
@@ -230,6 +232,7 @@
                 const locations = Array.isArray(data) ? data : (data.results || []);
                 currentLocationsData = locations;
 
+                // Aktualizujemy to co jest aktualnie widoczne
                 if (isHeatmapActive) {
                     updateHeatmapData(locations);
                 } else {
@@ -582,7 +585,7 @@
         return null;
     }
 
-    // === OBSŁUGA PRZEŁĄCZANIA WIDOKU ===
+    // === NOWE FUNKCJE HEATMAPY (Dodane na końcu) ===
 
     function initHeatmapControls() {
         const toggle = document.getElementById('heatmapToggle');
