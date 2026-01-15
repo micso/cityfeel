@@ -25,7 +25,6 @@
         },
 
         // 3 ODDZIELNE WARSTWY HEATMAPY
-        // Dzięki temu kolory się nie mieszają (czerwone punkty pozostają czerwone)
         HEATMAP: {
             RADIUS: 35,
             BLUR: 20,
@@ -35,7 +34,7 @@
             // Warstwa ZŁA (1.0 - 2.5) -> Odcienie czerwieni
             GRADIENT_BAD: {
                 0.4: '#e74c3c', // Czerwony
-                1.0: '#b03a2e'  // Ciemny Czerwony (przy dużym zagęszczeniu)
+                1.0: '#b03a2e'  // Ciemny Czerwony
             },
             // Warstwa NEUTRALNA (2.5 - 3.5) -> Odcienie żółtego
             GRADIENT_NEUTRAL: {
@@ -114,7 +113,6 @@
         map.addLayer(markerClusterGroup);
         map.on('moveend', debounce(loadVisibleLocations, CONFIG.DEBOUNCE_DELAY));
 
-        // Pierwsze ładowanie
         loadVisibleLocations();
     }
 
@@ -232,7 +230,6 @@
                 const locations = Array.isArray(data) ? data : (data.results || []);
                 currentLocationsData = locations;
 
-                // Aktualizujemy to co jest aktualnie widoczne
                 if (isHeatmapActive) {
                     updateHeatmapData(locations);
                 } else {
@@ -632,7 +629,9 @@
             if (map.hasLayer(heatLayerNeutral)) map.removeLayer(heatLayerNeutral);
             if (map.hasLayer(heatLayerGood)) map.removeLayer(heatLayerGood);
 
-            if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
+            if (!map.hasLayer(markerClusterGroup)) {
+                map.addLayer(markerClusterGroup);
+            }
 
             // NAPRAWA: Zawsze odśwież markery przy powrocie do normalnego widoku!
             displayLocations(currentLocationsData);
@@ -655,11 +654,16 @@
                 0.8 // Stała wysoka intensywność (kolor zależy od warstwy, nie od zagęszczenia)
             ];
 
+            // 1. ZŁA (1.0 - 2.5)
             if (val < 2.5) {
                 badPoints.push(point);
-            } else if (val >= 2.5 && val < 3.8) {
+            }
+            // 2. NEUTRALNA (2.5 - 3.5)
+            else if (val >= 2.5 && val < 3.8) {
                 neutralPoints.push(point);
-            } else {
+            }
+            // 3. DOBRA (3.5 - 5.0)
+            else {
                 goodPoints.push(point);
             }
         });
