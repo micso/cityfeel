@@ -25,27 +25,26 @@
         },
 
         // 3 ODDZIELNE WARSTWY HEATMAPY
-        // Dzięki temu kolory się nie mieszają (czerwone punkty pozostają czerwone)
         HEATMAP: {
             RADIUS: 35,
             BLUR: 20,
             MAX_ZOOM: 16,
             MIN_OPACITY: 0.5,
 
-            // Warstwa ZŁA (1.0 - 2.5) -> Odcienie czerwieni
+            // Warstwa ZŁA (1.0 - 2.5) -> Czerwony
             GRADIENT_BAD: {
-                0.4: '#e74c3c', // Czerwony
-                1.0: '#b03a2e'  // Ciemny Czerwony (przy dużym zagęszczeniu)
+                0.4: '#e74c3c',
+                1.0: '#b03a2e'
             },
-            // Warstwa NEUTRALNA (2.5 - 3.5) -> Odcienie żółtego
+            // Warstwa NEUTRALNA (2.5 - 3.5) -> Żółty/Pomarańczowy
             GRADIENT_NEUTRAL: {
-                0.4: '#f39c12', // Żółty
-                1.0: '#d35400'  // Ciemny Pomarańcz
+                0.4: '#f39c12',
+                1.0: '#d35400'
             },
-            // Warstwa DOBRA (3.5 - 5.0) -> Odcienie zieleni
+            // Warstwa DOBRA (3.5 - 5.0) -> Zielony
             GRADIENT_GOOD: {
-                0.4: '#2ecc71', // Jasny Zielony
-                1.0: '#196f3d'  // Bardzo Ciemny Zielony
+                0.4: '#2ecc71',
+                1.0: '#196f3d'
             }
         }
     };
@@ -88,7 +87,6 @@
         initFilters();
         initHeatmapControls();
 
-        // Markery
         markerClusterGroup = L.markerClusterGroup({
             maxClusterRadius: 50,
             spiderfyOnMaxZoom: true,
@@ -97,7 +95,6 @@
             iconCreateFunction: createClusterIcon
         });
 
-        // Heatmapy (3 warstwy)
         if (typeof L.heatLayer === 'function') {
             const commonOptions = {
                 radius: CONFIG.HEATMAP.RADIUS,
@@ -114,7 +111,6 @@
         map.addLayer(markerClusterGroup);
         map.on('moveend', debounce(loadVisibleLocations, CONFIG.DEBOUNCE_DELAY));
 
-        // Pierwsze ładowanie
         loadVisibleLocations();
     }
 
@@ -153,7 +149,6 @@
                 btn.classList.remove(outlineClass);
                 btn.classList.add(solidClass, 'text-white', 'shadow');
             } else {
-                // Pozostaje outline
             }
         } else {
             const solidClass = classList.find(c => c.startsWith('btn-') && !c.startsWith('btn-outline-') && c !== 'btn-sm');
@@ -232,7 +227,6 @@
                 const locations = Array.isArray(data) ? data : (data.results || []);
                 currentLocationsData = locations;
 
-                // Aktualizujemy to co jest aktualnie widoczne
                 if (isHeatmapActive) {
                     updateHeatmapData(locations);
                 } else {
