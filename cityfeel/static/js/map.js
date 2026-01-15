@@ -24,17 +24,28 @@
             5.0: '#27ae60',  // Bardzo pozytywne (ciemnozielony)
         },
 
-        // NOWE: Konfiguracja Heatmapy
+        // 3 ODDZIELNE WARSTWY HEATMAPY
+        // Dzięki temu kolory się nie mieszają (czerwone punkty pozostają czerwone)
         HEATMAP: {
-            DEFAULT_RADIUS: 30,
-            DEFAULT_BLUR: 20,
+            RADIUS: 35,
+            BLUR: 20,
             MAX_ZOOM: 16,
-            // Gradient: Blue (chłodno) -> Yellow -> Red (gorąco/najlepiej)
-            GRADIENT: {
-                0.4: 'blue',
-                0.6: 'red',   // Przejściowy zielony dla płynności
-                0.8: 'yellow',
-                1.0: 'lime'     // Czerwony na szczycie skali (max)
+            MIN_OPACITY: 0.5,
+
+            // Warstwa ZŁA (1.0 - 2.5) -> Odcienie czerwieni
+            GRADIENT_BAD: {
+                0.4: '#e74c3c', // Czerwony
+                1.0: '#b03a2e'  // Ciemny Czerwony (przy dużym zagęszczeniu)
+            },
+            // Warstwa NEUTRALNA (2.5 - 3.5) -> Odcienie żółtego
+            GRADIENT_NEUTRAL: {
+                0.4: '#f39c12', // Żółty
+                1.0: '#d35400'  // Ciemny Pomarańcz
+            },
+            // Warstwa DOBRA (3.5 - 5.0) -> Odcienie zieleni
+            GRADIENT_GOOD: {
+                0.4: '#2ecc71', // Jasny Zielony
+                1.0: '#196f3d'  // Bardzo Ciemny Zielony
             }
         }
     };
@@ -45,41 +56,39 @@
     let debounceTimer = null;
     let currentBounds = null;
 
-    // NOWE: Stan Heatmapy
-    let heatLayer = null;
+    // Heatmap layers
+    let heatLayerBad = null;
+    let heatLayerNeutral = null;
+    let heatLayerGood = null;
+
     let isHeatmapActive = false;
-    let currentLocationsData = []; // Cache danych do przełączania widoku i sprawdzania bliskości
+    let currentLocationsData = [];
 
-    // Stan filtrów
+    // Filters & UI
     let activeFilters = [];
-
-    // Stan dla dodawania emocji
     let addEmotionModal = null;
     let isUserAuthenticated = false;
     let selectedCoordinates = null;
-    let proximityRadius = 50; // domyślnie 50m, nadpisane z data-attribute
-    let emotionPointsUrl = '/api/emotion-points/'; // fallback, nadpisane z data-attribute
+    let proximityRadius = 50;
+    let emotionPointsUrl = '/api/emotion-points/';
 
     // === INICJALIZACJA ===
     function init() {
-        // Mapa jest już zainicjalizowana w template jako window.map
         map = window.map;
 
-        // Sprawdź czy user jest zalogowany i pobierz konfigurację z data-attributes
         const mapElement = document.getElementById('map');
         isUserAuthenticated = mapElement.dataset.userAuthenticated === 'true';
         proximityRadius = parseInt(mapElement.dataset.proximityRadius, 10) || 50;
         emotionPointsUrl = mapElement.dataset.emotionPointsUrl || '/api/emotion-points/';
 
-        // Inicjalizacja funkcjonalności dodawania emocji (tylko dla zalogowanych)
         if (isUserAuthenticated) {
             initAddEmotionFeature();
         }
 
         initFilters();
-        initHeatmapControls(); // NOWE: UI Heatmapy
+        initHeatmapControls();
 
-        // Cluster group
+        // Markery
         markerClusterGroup = L.markerClusterGroup({
             maxClusterRadius: 50,
             spiderfyOnMaxZoom: true,
@@ -88,26 +97,28 @@
             iconCreateFunction: createClusterIcon
         });
 
-        // NOWE: Warstwa Heatmapy
+        // Heatmapy (3 warstwy)
         if (typeof L.heatLayer === 'function') {
-            heatLayer = L.heatLayer([], {
-                radius: CONFIG.HEATMAP.DEFAULT_RADIUS,
-                blur: CONFIG.HEATMAP.DEFAULT_BLUR,
+            const commonOptions = {
+                radius: CONFIG.HEATMAP.RADIUS,
+                blur: CONFIG.HEATMAP.BLUR,
                 maxZoom: CONFIG.HEATMAP.MAX_ZOOM,
-                gradient: CONFIG.HEATMAP.GRADIENT
-            });
+                minOpacity: CONFIG.HEATMAP.MIN_OPACITY
+            };
+
+            heatLayerBad = L.heatLayer([], { ...commonOptions, gradient: CONFIG.HEATMAP.GRADIENT_BAD });
+            heatLayerNeutral = L.heatLayer([], { ...commonOptions, gradient: CONFIG.HEATMAP.GRADIENT_NEUTRAL });
+            heatLayerGood = L.heatLayer([], { ...commonOptions, gradient: CONFIG.HEATMAP.GRADIENT_GOOD });
         }
 
         map.addLayer(markerClusterGroup);
-
-        // Event listeners
         map.on('moveend', debounce(loadVisibleLocations, CONFIG.DEBOUNCE_DELAY));
 
-        // Pierwsze załadowanie
+        // Pierwsze ładowanie
         loadVisibleLocations();
     }
 
-    // === OBSŁUGA FILTRÓW ===
+    // === FILTRY ===
     function initFilters() {
         const filtersContainer = document.getElementById('map-filters');
         if (!filtersContainer) return;
@@ -116,46 +127,35 @@
 
         buttons.forEach(btn => {
             btn.addEventListener('click', function (e) {
-                // Zapobiegaj propagacji, żeby nie klikać mapy pod spodem
                 e.stopPropagation();
-
                 const btn = e.currentTarget;
                 const value = parseInt(btn.dataset.value, 10);
 
-                // 1. Zaktualizuj stan (tablica activeFilters)
                 if (activeFilters.includes(value)) {
-                    // Usuń z filtrów
                     activeFilters = activeFilters.filter(v => v !== value);
                     toggleFilterButtonStyle(btn, false);
                 } else {
-                    // Dodaj do filtrów
                     activeFilters.push(value);
                     toggleFilterButtonStyle(btn, true);
                 }
-
-                // 2. Przeładuj mapę z nowymi filtrami
-                // force=true wymusza odświeżenie nawet jak nie ruszyliśmy mapą
                 loadVisibleLocations(true);
             });
         });
     }
 
-    // Funkcja zmieniająca wygląd przycisku (Outline <-> Solid)
     function toggleFilterButtonStyle(btn, isActive) {
-        // Pobieramy klasy Bootstrapa na podstawie koloru (np. btn-outline-danger -> btn-danger)
         const classList = Array.from(btn.classList);
         const outlineClass = classList.find(c => c.startsWith('btn-outline-'));
 
         if (outlineClass) {
             const solidClass = outlineClass.replace('btn-outline-', 'btn-');
-
             if (isActive) {
                 btn.classList.remove(outlineClass);
-                btn.classList.add(solidClass, 'text-white', 'shadow'); // Dodajemy cień i biały tekst
+                btn.classList.add(solidClass, 'text-white', 'shadow');
             } else {
+                // Pozostaje outline
             }
         } else {
-            // Jeśli przycisk jest już "solid", to znaczy że go odznaczamy
             const solidClass = classList.find(c => c.startsWith('btn-') && !c.startsWith('btn-outline-') && c !== 'btn-sm');
             if (solidClass) {
                 const outlineClass = solidClass.replace('btn-', 'btn-outline-');
@@ -167,8 +167,7 @@
         }
     }
 
-
-    // === CLUSTER ICON ===
+    // === IKONY KLASTRÓW ===
     function createClusterIcon(cluster) {
         const childMarkers = cluster.getAllChildMarkers();
         const avgValue = calculateAverageEmotionValue(childMarkers);
@@ -184,18 +183,14 @@
 
     function calculateAverageEmotionValue(markers) {
         if (!markers.length) return 3.0;
-
         const sum = markers.reduce((acc, marker) => {
             return acc + (marker.options.emotionValue || 3.0);
         }, 0);
-
         return sum / markers.length;
     }
 
-    // === KOLORY ===
     function getColorByValue(value) {
-        if (!value) return CONFIG.EMOTION_COLORS[3.0]; // Default fallback
-
+        if (!value) return CONFIG.EMOTION_COLORS[3.0];
         if (value < 1.5) return CONFIG.EMOTION_COLORS[1.0];
         if (value < 2.5) return CONFIG.EMOTION_COLORS[2.0];
         if (value < 3.5) return CONFIG.EMOTION_COLORS[3.0];
@@ -203,31 +198,19 @@
         return CONFIG.EMOTION_COLORS[5.0];
     }
 
-    // === LOADING LOCATIONS ===
+    // === POBIERANIE DANYCH ===
     function loadVisibleLocations(force = false) {
         const bounds = map.getBounds();
-
-        // Normalizuj współrzędne do zakresu -180..180
-        // (potrzebne gdy mapa okrąża Ziemię i lng przekracza ±180)
         const sw = bounds.getSouthWest().wrap();
         const ne = bounds.getNorthEast().wrap();
+        const bbox = [sw.lng, sw.lat, ne.lng, ne.lat].join(',');
 
-        const bbox = [
-            sw.lng,
-            sw.lat,
-            ne.lng,
-            ne.lat
-        ].join(',');
-
-        // Sprawdź czy bounds się zmieniły (chyba że force=true)
         if (!force && currentBounds === bbox) return;
         currentBounds = bbox;
 
-        // Pobierz API URL z data attribute
         const apiUrl = document.getElementById('map').dataset.apiUrl || '/api/locations/';
         let url = `${apiUrl}?bbox=${bbox}`;
 
-        // Jeśli są aktywne filtry, dodaj je do URL
         if (activeFilters.length > 0) {
             url += `&emotional_value=${activeFilters.join(',')}`;
         }
@@ -237,27 +220,19 @@
 
     function fetchLocations(url) {
         document.body.style.cursor = 'wait';
-
         fetch(url, {
             credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json'
-            }
+            headers: { 'Accept': 'application/json' }
         })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
             .then(data => {
-                // Obsługa odpowiedzi bez paginacji (tablica) i z paginacją (obiekt z results)
                 const locations = Array.isArray(data) ? data : (data.results || []);
-
-                // NOWE: Zapisz do cache
                 currentLocationsData = locations;
 
-                // NOWE: Decyzja co wyświetlić
+                // Aktualizujemy to co jest aktualnie widoczne
                 if (isHeatmapActive) {
                     updateHeatmapData(locations);
                 } else {
@@ -272,10 +247,9 @@
             });
     }
 
-    // === WYŚWIETLANIE MARKERÓW ===
+    // === RYSOWANIE MARKERÓW ===
     function displayLocations(locations) {
         markerClusterGroup.clearLayers();
-
         locations.forEach(location => {
             const marker = createMarker(location);
             markerClusterGroup.addLayer(marker);
@@ -286,18 +260,12 @@
         const { coordinates, avg_emotional_value, name, id, emotion_points_count, comments_count } = location;
         const { latitude, longitude } = coordinates;
 
-        // LOGIKA KOLORÓW PUNKTÓW
         let color;
-        // 1. Punkty z ocenami -> Skala emocji
         if (emotion_points_count > 0) {
             color = getColorByValue(avg_emotional_value);
-        }
-        // 2. Punkty TYLKO z komentarzami -> Fioletowy
-        else if (comments_count > 0) {
+        } else if (comments_count > 0) {
             color = CONFIG.COLORS.COMMENT;
-        }
-        // 3. Puste punkty -> Szary
-        else {
+        } else {
             color = CONFIG.COLORS.EMPTY;
         }
 
@@ -312,17 +280,13 @@
         });
 
         marker.bindPopup(createPopupContent(location));
-
         return marker;
     }
 
-    // === POPUP ===
     function createPopupContent(location) {
         const { name, avg_emotional_value, emotion_points_count, comments_count, id, latest_comment } = location;
-
         const stars = getStarsHTML(avg_emotional_value);
         const detailsUrl = `/map/location/${id}/`;
-
         const ratingText = `Oparte na ${emotion_points_count || 0} ${pluralize(emotion_points_count)}`;
 
         let commentsText = '';
@@ -374,25 +338,17 @@
 
     function getStarsHTML(value) {
         if (!value) return '';
-
         const fullStars = Math.floor(value);
         const hasHalfStar = (value % 1) >= 0.5;
         let html = '';
-
         for (let i = 0; i < 5; i++) {
-            if (i < fullStars) {
-                html += '★';
-            } else if (i === fullStars && hasHalfStar) {
-                html += '☆';
-            } else {
-                html += '☆';
-            }
+            if (i < fullStars) html += '★';
+            else if (i === fullStars && hasHalfStar) html += '☆';
+            else html += '☆';
         }
-
         return `<span class="stars" style="color: #f39c12; font-size: 1.2rem;">${html}</span>`;
     }
 
-    // === UTILITIES ===
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -401,15 +357,11 @@
 
     function pluralize(count) {
         if (count === 1) return 'ocenie';
-        if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
-            return 'ocenach';
-        }
+        if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'ocenach';
         return 'ocenach';
     }
 
-    function showError(message) {
-        alert(message);
-    }
+    function showError(message) { alert(message); }
 
     function debounce(func, delay) {
         return function (...args) {
@@ -418,70 +370,32 @@
         };
     }
 
-    // === ADD EMOTION FEATURE ===
-
-    /**
-     * Inicjalizacja funkcjonalności dodawania emocji.
-     * Wywoływana tylko dla zalogowanych użytkowników.
-     */
+    // === DODAWANIE EMOCJI (MODAL) ===
     function initAddEmotionFeature() {
-        // Inicjalizacja Bootstrap Modal
         const modalElement = document.getElementById('addEmotionModal');
-        if (!modalElement) {
-            console.warn('Modal #addEmotionModal nie został znaleziony w HTML');
-            return;
-        }
+        if (!modalElement) return;
 
         addEmotionModal = new bootstrap.Modal(modalElement);
-
-        // Event listener dla kliknięcia na mapę
         map.on('click', handleMapClick);
-
-        // Dodaj wizualną wskazówkę (cursor: crosshair)
         document.getElementById('map').classList.add('clickable-map');
-
-        // Inicjalizacja interaktywnych gwiazdek
         initStarRating();
-
-        // Event listener dla przycisku Submit
         document.getElementById('submitEmotion').addEventListener('click', handleEmotionSubmit);
-
-        // Event listener dla zamknięcia modala - reset formularza
         modalElement.addEventListener('hidden.bs.modal', resetEmotionForm);
     }
 
-    /**
-     * Obsługa kliknięcia na mapę.
-     * Otwiera modal z formularzem dodawania emocji.
-     */
     function handleMapClick(e) {
         const { lat, lng } = e.latlng;
-
-        // Zapisz współrzędne
         selectedCoordinates = { latitude: lat, longitude: lng };
-
-        // Wyświetl współrzędne w modalu
-        document.getElementById('coordinatesDisplay').textContent =
-            `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-
-        // Sprawdź proximity matching
+        document.getElementById('coordinatesDisplay').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         checkProximityAndShowInfo(lat, lng);
-
-        // Otwórz modal
         addEmotionModal.show();
     }
 
-    /**
-     * Sprawdza czy w pobliżu klikniętego punktu (w promieniu proximityRadius)
-     * istnieje już jakaś lokalizacja i wyświetla info o tym w modalu.
-     */
     function checkProximityAndShowInfo(lat, lng) {
         const proximityInfo = document.getElementById('proximityInfo');
         const proximityText = document.getElementById('proximityText');
         const locationNameContainer = document.getElementById('locationNameContainer');
 
-        // POPRAWKA: Sprawdzamy dane w pamięci (currentLocationsData) a nie markery
-        // Dzięki temu działa to także, gdy Heatmapa jest włączona i markery są ukryte.
         let closestLocation = null;
         let minDistance = Infinity;
 
@@ -493,106 +407,67 @@
             }
         });
 
-        // Pokaż info jeśli znaleziono bliską lokalizację
         if (closestLocation) {
-            proximityText.textContent =
-                `Twoja ocena zostanie przypisana do: "${closestLocation.name}" (${Math.round(minDistance)}m od kliknięcia)`;
+            proximityText.textContent = `Twoja ocena zostanie przypisana do: "${closestLocation.name}" (${Math.round(minDistance)}m od kliknięcia)`;
             proximityInfo.classList.remove('d-none');
             proximityInfo.classList.add('alert-info');
-
-            // Ukryj pole nazwy - przypisujemy do istniejącej lokalizacji
             locationNameContainer.classList.add('d-none');
         } else {
             proximityText.textContent = 'Utworzysz nową lokalizację w tym miejscu';
             proximityInfo.classList.remove('d-none');
             proximityInfo.classList.add('alert-warning');
-
-            // Pokaż pole nazwy - użytkownik tworzy nową lokalizację
             locationNameContainer.classList.remove('d-none');
         }
     }
 
-    /**
-     * Inicjalizacja interaktywnych gwiazdek (click, hover preview).
-     */
     function initStarRating() {
         const starRating = document.getElementById('starRating');
         const stars = starRating.querySelectorAll('label');
         const radios = starRating.querySelectorAll('input[type="radio"]');
 
-        // Hover effect - preview
         stars.forEach((star, index) => {
             star.addEventListener('mouseenter', function () {
-                // Podświetl gwiazdki od prawej do tej nad którą jest hover
-                for (let i = stars.length - 1; i >= index; i--) {
-                    stars[i].style.color = '#f39c12';
-                }
-                // Przyciemnij pozostałe
-                for (let i = index - 1; i >= 0; i--) {
-                    stars[i].style.color = '#ddd';
-                }
+                for (let i = stars.length - 1; i >= index; i--) stars[i].style.color = '#f39c12';
+                for (let i = index - 1; i >= 0; i--) stars[i].style.color = '#ddd';
             });
         });
 
-        // Usunięcie hover - powrót do checked state
         starRating.addEventListener('mouseleave', function () {
             const checkedRadio = starRating.querySelector('input[type="radio"]:checked');
-            if (checkedRadio) {
-                updateStarsDisplay(checkedRadio);
-            } else {
-                // Wszystkie gwiazdki szare
-                stars.forEach(star => star.style.color = '#ddd');
-            }
+            if (checkedRadio) updateStarsDisplay(checkedRadio);
+            else stars.forEach(star => star.style.color = '#ddd');
         });
 
-        // Click - zaznacz i zapisz
         radios.forEach(radio => {
-            radio.addEventListener('change', function () {
-                updateStarsDisplay(this);
-            });
+            radio.addEventListener('change', function () { updateStarsDisplay(this); });
         });
     }
 
-    /**
-     * Aktualizuje wyświetlanie gwiazdek na podstawie zaznaczonego radio.
-     */
     function updateStarsDisplay(checkedRadio) {
         const starRating = document.getElementById('starRating');
         const stars = starRating.querySelectorAll('label');
         const value = parseInt(checkedRadio.value, 10);
 
-        // Wypełnij gwiazdki od prawej (5) do zaznaczonej wartości
         stars.forEach((star, index) => {
-            const starValue = 5 - index; // gwiazdki są w odwrotnej kolejności w HTML
-            if (starValue <= value) {
-                star.style.color = '#f39c12'; // żółty
-            } else {
-                star.style.color = '#ddd'; // szary
-            }
+            const starValue = 5 - index;
+            if (starValue <= value) star.style.color = '#f39c12';
+            else star.style.color = '#ddd';
         });
     }
 
-    /**
-     * Obsługa wysłania formularza - dodanie emocji.
-     */
     async function handleEmotionSubmit() {
-        // Pobierz wartości z formularza
         const emotionalValue = document.querySelector('input[name="emotional_value"]:checked');
         const privacyStatus = document.getElementById('privacyStatus').value;
         const locationNameInput = document.getElementById('locationName');
         const locationNameContainer = document.getElementById('locationNameContainer');
         const commentInput = document.getElementById('emotionComment');
 
-        // Walidacja
         if (!emotionalValue) {
             showEmotionError('Musisz wybrać ocenę (kliknij na gwiazdki).');
             return;
         }
 
-        // Ukryj błędy
         hideEmotionErrors();
-
-        // Pokaż spinner
         const submitBtn = document.getElementById('submitEmotion');
         const submitText = document.getElementById('submitText');
         const submitSpinner = document.getElementById('submitSpinner');
@@ -601,22 +476,15 @@
         submitText.classList.add('d-none');
         submitSpinner.classList.remove('d-none');
 
-        // Przygotuj dane lokalizacji
         const locationData = {
-            coordinates: {
-                latitude: selectedCoordinates.latitude,
-                longitude: selectedCoordinates.longitude
-            }
+            coordinates: { latitude: selectedCoordinates.latitude, longitude: selectedCoordinates.longitude }
         };
 
         if (!locationNameContainer.classList.contains('d-none')) {
             const locationName = locationNameInput.value.trim();
-            if (locationName) {
-                locationData.name = locationName;
-            }
+            if (locationName) locationData.name = locationName;
         }
 
-        // Przygotuj payload
         const payload = {
             location: locationData,
             emotional_value: parseInt(emotionalValue.value, 10),
@@ -626,7 +494,6 @@
 
         try {
             const csrfToken = getCsrfToken();
-
             const response = await fetch(emotionPointsUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -639,14 +506,12 @@
             });
 
             if (!response.ok) {
-                // Sprawdź czy odpowiedź to JSON
                 const contentType = response.headers.get("content-type");
                 if (contentType && contentType.includes("application/json")) {
                     const errorData = await response.json();
                     handleApiErrors(errorData);
                 } else {
-                    console.error('SERVER ERROR (HTML):', await response.text());
-                    throw new Error(`Błąd serwera (${response.status}). Zobacz konsolę (F12) po szczegóły.`);
+                    throw new Error(`Błąd serwera (${response.status}).`);
                 }
                 return;
             }
@@ -656,7 +521,7 @@
 
         } catch (error) {
             console.error('Network error:', error);
-            showEmotionError(error.message || 'Błąd połączenia. Sprawdź połączenie internetowe i spróbuj ponownie.');
+            showEmotionError(error.message || 'Błąd połączenia.');
         } finally {
             submitBtn.disabled = false;
             submitText.classList.remove('d-none');
@@ -666,32 +531,19 @@
 
     function handleEmotionSuccess(data) {
         addEmotionModal.hide();
-
         const toastElement = document.getElementById('successToast');
         const toastBody = document.getElementById('successMessage');
         const locationName = data.location?.name || 'lokalizacja';
         toastBody.textContent = `Twoja ocena została zapisana dla: ${locationName}`;
-
-        const toast = new bootstrap.Toast(toastElement, {
-            autohide: true,
-            delay: 4000
-        });
+        const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 4000 });
         toast.show();
-
         loadVisibleLocations(true);
     }
 
     function handleApiErrors(errorData) {
-        let errorMessage = 'Wystąpił błąd podczas dodawania oceny.';
-        if (errorData.emotional_value) {
-            errorMessage = Array.isArray(errorData.emotional_value)
-                ? errorData.emotional_value[0]
-                : errorData.emotional_value;
-        } else if (errorData.location) {
-            // ... (skrócone dla czytelności, logika taka sama jak w Twoim pliku)
-        } else if (errorData.detail) {
-            errorMessage = errorData.detail;
-        }
+        let errorMessage = 'Wystąpił błąd.';
+        if (errorData.emotional_value) errorMessage = Array.isArray(errorData.emotional_value) ? errorData.emotional_value[0] : errorData.emotional_value;
+        else if (errorData.detail) errorMessage = errorData.detail;
         showEmotionError(errorMessage);
     }
 
@@ -702,53 +554,38 @@
     }
 
     function hideEmotionErrors() {
-        const errorsDiv = document.getElementById('emotionErrors');
-        errorsDiv.classList.add('d-none');
+        document.getElementById('emotionErrors').classList.add('d-none');
     }
 
     function resetEmotionForm() {
-        const radios = document.querySelectorAll('input[name="emotional_value"]');
-        radios.forEach(radio => radio.checked = false);
-
-        const stars = document.querySelectorAll('#starRating label');
-        stars.forEach(star => star.style.color = '#ddd');
-
+        document.querySelectorAll('input[name="emotional_value"]').forEach(r => r.checked = false);
+        document.querySelectorAll('#starRating label').forEach(s => s.style.color = '#ddd');
         document.getElementById('privacyStatus').value = 'public';
-
-        const locationNameInput = document.getElementById('locationName');
-        const locationNameContainer = document.getElementById('locationNameContainer');
-        locationNameInput.value = '';
-        locationNameContainer.classList.add('d-none');
-
-        const commentInput = document.getElementById('emotionComment');
-        if (commentInput) commentInput.value = '';
-
+        document.getElementById('locationName').value = '';
+        document.getElementById('locationNameContainer').classList.add('d-none');
+        const comment = document.getElementById('emotionComment');
+        if (comment) comment.value = '';
         hideEmotionErrors();
-        const proximityInfo = document.getElementById('proximityInfo');
-        proximityInfo.classList.add('d-none');
-        proximityInfo.classList.remove('alert-info', 'alert-warning');
-
+        document.getElementById('proximityInfo').classList.add('d-none');
         selectedCoordinates = null;
         document.getElementById('coordinatesDisplay').textContent = '-';
     }
 
     function getCsrfToken() {
         const name = 'csrftoken';
-        let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
             for (let i = 0; i < cookies.length; i++) {
                 const cookie = cookies[i].trim();
                 if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+                    return decodeURIComponent(cookie.substring(name.length + 1));
                 }
             }
         }
-        return cookieValue;
+        return null;
     }
 
-    // === NOWE FUNKCJE HEATMAPY (Dodane na końcu) ===
+    // === OBSŁUGA PRZEŁĄCZANIA WIDOKU ===
 
     function initHeatmapControls() {
         const toggle = document.getElementById('heatmapToggle');
@@ -759,8 +596,6 @@
             toggle.addEventListener('change', function (e) {
                 isHeatmapActive = e.target.checked;
                 toggleHeatmapView();
-
-                // Pokaż/ukryj suwak
                 if (isHeatmapActive) {
                     settingsDiv.classList.remove('d-none');
                 } else {
@@ -772,58 +607,67 @@
         if (radiusInput) {
             radiusInput.addEventListener('input', function (e) {
                 const radius = parseInt(e.target.value, 10);
-                if (heatLayer) {
-                    heatLayer.setOptions({ radius: radius });
-                }
+                if (heatLayerBad) heatLayerBad.setOptions({ radius: radius });
+                if (heatLayerNeutral) heatLayerNeutral.setOptions({ radius: radius });
+                if (heatLayerGood) heatLayerGood.setOptions({ radius: radius });
             });
         }
     }
 
     function toggleHeatmapView() {
-        if (!heatLayer) return;
+        if (!heatLayerBad) return;
 
         if (isHeatmapActive) {
-            // Włączamy Heatmapę -> Ukrywamy Markery
-            if (map.hasLayer(markerClusterGroup)) {
-                map.removeLayer(markerClusterGroup);
-            }
-            if (!map.hasLayer(heatLayer)) {
-                map.addLayer(heatLayer);
-            }
-            // Upewnij się, że heatmapa ma dane
+            // Włącz heatmapę (wszystkie 3 warstwy)
+            if (map.hasLayer(markerClusterGroup)) map.removeLayer(markerClusterGroup);
+
+            if (!map.hasLayer(heatLayerBad)) map.addLayer(heatLayerBad);
+            if (!map.hasLayer(heatLayerNeutral)) map.addLayer(heatLayerNeutral);
+            if (!map.hasLayer(heatLayerGood)) map.addLayer(heatLayerGood);
+
             updateHeatmapData(currentLocationsData);
         } else {
-            // Włączamy Markery -> Ukrywamy Heatmapę
-            if (map.hasLayer(heatLayer)) {
-                map.removeLayer(heatLayer);
-            }
-            if (!map.hasLayer(markerClusterGroup)) {
-                map.addLayer(markerClusterGroup);
-            }
+            // Wyłącz heatmapę
+            if (map.hasLayer(heatLayerBad)) map.removeLayer(heatLayerBad);
+            if (map.hasLayer(heatLayerNeutral)) map.removeLayer(heatLayerNeutral);
+            if (map.hasLayer(heatLayerGood)) map.removeLayer(heatLayerGood);
+
+            if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
+
+            // NAPRAWA: Zawsze odśwież markery przy powrocie do normalnego widoku!
+            displayLocations(currentLocationsData);
         }
     }
 
     function updateHeatmapData(locations) {
-        if (!heatLayer) return;
+        if (!heatLayerBad) return;
 
-        // Mapujemy lokalizacje na format [lat, lng, intensity]
-        const heatPoints = locations.map(loc => {
-            // Intensity (0.0 - 1.0)
-            // Jeśli jest ocena (1-5), normalizujemy ją: 5.0 -> 1.0 (Najmocniej świeci)
-            // Jeśli brak oceny (sam komentarz), dajemy małą wagę (np. 0.3)
-            let intensity = 0.3;
-            if (loc.avg_emotional_value) {
-                intensity = loc.avg_emotional_value / 5.0;
-            }
+        // Rozdzielamy punkty na 3 "koszyki"
+        const badPoints = [];
+        const neutralPoints = [];
+        const goodPoints = [];
 
-            return [
+        locations.forEach(loc => {
+            const val = loc.avg_emotional_value || 0;
+            const point = [
                 loc.coordinates.latitude,
                 loc.coordinates.longitude,
-                intensity
+                0.8 // Stała wysoka intensywność (kolor zależy od warstwy, nie od zagęszczenia)
             ];
+
+            if (val < 2.5) {
+                badPoints.push(point);
+            } else if (val >= 2.5 && val < 3.8) {
+                neutralPoints.push(point);
+            } else {
+                goodPoints.push(point);
+            }
         });
 
-        heatLayer.setLatLngs(heatPoints);
+        // Aktualizujemy każdą warstwę niezależnie
+        heatLayerBad.setLatLngs(badPoints);
+        heatLayerNeutral.setLatLngs(neutralPoints);
+        heatLayerGood.setLatLngs(goodPoints);
     }
 
     if (document.readyState === 'loading') {
