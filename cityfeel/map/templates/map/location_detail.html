@@ -309,7 +309,11 @@
     var lat = {{ location.coordinates.y|stringformat:".6f" }};
     var lon = {{ location.coordinates.x|stringformat:".6f" }};
     var detailMap = L.map('detail-map', { scrollWheelZoom: false }).setView([lat, lon], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(detailMap);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      crossOrigin: true,
+      referrerPolicy: 'no-referrer-when-downgrade'
+    }).addTo(detailMap);
     L.marker([lat, lon]).addTo(detailMap).bindPopup("<b>{{ location.name }}</b>").openPopup();
     setTimeout(function(){ detailMap.invalidateSize()}, 200);
 
