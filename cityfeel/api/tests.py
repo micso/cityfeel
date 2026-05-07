@@ -77,8 +77,12 @@ class EmotionPointAPITestCase(TestCase):
         self.assertEqual(emotion_point.user, self.user)
         self.assertEqual(emotion_point.emotional_value, 4)
 
-    def test_update_existing_emotion_point(self):
-        """Test aktualizacji istniejącego EmotionPoint."""
+    def test_repeated_post_creates_history_entry(self):
+        """
+        Po refaktorze na model historyczny ponowny POST przez tego samego usera
+        do tej samej lokalizacji TWORZY NOWY wpis (nie nadpisuje).
+        Stary wpis pozostaje w historii — niezbędny dla filtra czasowego mapy.
+        """
         self.client.force_authenticate(user=self.user)
 
         # Utwórz początkowy punkt
@@ -93,7 +97,7 @@ class EmotionPointAPITestCase(TestCase):
             privacy_status='public'
         )
 
-        # Wyślij request z tymi samymi współrzędnymi
+        # Wyślij request z tymi samymi współrzędnymi → reuse istniejącej lokalizacji
         data = {
             'location': self.make_location_data(self.test_lat, self.test_lon),
             'emotional_value': 5,
@@ -102,21 +106,23 @@ class EmotionPointAPITestCase(TestCase):
 
         response = self.client.post(self.url, data, format='json')
 
-        # Sprawdź status code (POST zawsze zwraca 201)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # Sprawdź zaktualizowane wartości
         self.assertEqual(response.data['emotional_value'], 5)
         self.assertEqual(response.data['privacy_status'], 'private')
 
-        # Sprawdź że nie utworzono duplikatu
-        self.assertEqual(EmotionPoint.objects.count(), 1)
+        # Lokalizacja wciąż jedna (proximity match), ale wpisy emocji to dwa różne
         self.assertEqual(Location.objects.count(), 1)
+        self.assertEqual(EmotionPoint.objects.count(), 2)
 
-        # Sprawdź wartości w bazie
-        emotion_point = EmotionPoint.objects.first()
-        self.assertEqual(emotion_point.emotional_value, 5)
-        self.assertEqual(emotion_point.privacy_status, 'private')
+        # Najnowszy wpis ma nowe wartości
+        latest = EmotionPoint.objects.order_by('-created_at').first()
+        self.assertEqual(latest.emotional_value, 5)
+        self.assertEqual(latest.privacy_status, 'private')
+
+        # Stary wpis nadal istnieje z oryginalnymi wartościami
+        oldest = EmotionPoint.objects.order_by('created_at').first()
+        self.assertEqual(oldest.emotional_value, 3)
+        self.assertEqual(oldest.privacy_status, 'public')
 
     def test_proximity_matching_uses_nearby_location(self):
         """Test czy proximity matching używa istniejącej Location w promieniu."""

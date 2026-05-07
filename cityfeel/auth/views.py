@@ -50,21 +50,30 @@ class UserProfileView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         profile_user = self.object
 
-        # Zliczanie punktów emocji z agregacją
-        emotion_stats = profile_user.emotion_points.aggregate(
+        # Model EmotionPoint jest historyczny — wiele wpisów per (user, location).
+        # Profil pokazuje "obecny stan ocen": najnowszą emocję per lokalizacja
+        # (DISTINCT ON (location_id) ORDER BY created_at DESC).
+        latest_per_location_ids = list(
+            profile_user.emotion_points
+            .order_by('location_id', '-created_at')
+            .distinct('location_id')
+            .values_list('id', flat=True)
+        )
+
+        emotion_stats = EmotionPoint.objects.filter(id__in=latest_per_location_ids).aggregate(
             total_count=Count('id'),
             public_count=Count('id', filter=Q(privacy_status='public')),
-            private_count=Count('id', filter=Q(privacy_status='private'))
+            private_count=Count('id', filter=Q(privacy_status='private')),
         )
 
         context['total_emotions'] = emotion_stats['total_count']
         context['public_emotions'] = emotion_stats['public_count']
         context['private_emotions'] = emotion_stats['private_count']
 
-        # Ostatnie publiczne emocje z select_related dla lokalizacji
+        # 10 najnowszych unikalnych lokalizacji (publicznych) w obecnym stanie ocen usera.
         context['recent_emotions'] = (
-            profile_user.emotion_points
-            .filter(privacy_status='public')
+            EmotionPoint.objects
+            .filter(id__in=latest_per_location_ids, privacy_status='public')
             .select_related('location')
             .order_by('-created_at')[:10]
         )
@@ -119,8 +128,9 @@ class CommunityView(LoginRequiredMixin, ListView):
 
         # Wykluczamy zalogowanego użytkownika z listy
         queryset = CFUser.objects.exclude(id=current_user.id).annotate(
-            # Liczymy wszystkie emocje
-            emotions_count=Count('emotion_points')
+            # Po przejściu na model historyczny zliczamy unikalne lokalizacje (a nie wpisy),
+            # żeby user "lubiący ten sam plac 5×" nie wyglądał na bardziej aktywnego.
+            emotions_count=Count('emotion_points__location', distinct=True)
         ).prefetch_related(
             # Pobieramy 3 ostatnie publiczne emocje dla każdego usera
             Prefetch('emotion_points', queryset=public_emotions_qs, to_attr='recent_public_emotions')

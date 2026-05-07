@@ -242,27 +242,25 @@ class EmotionPointSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        Tworzy lub aktualizuje EmotionPoint z proximity matching dla Location.
-        Tworzy komentarz jeśli został podany.
+        Tworzy nowy EmotionPoint z proximity matching dla Location.
+        Tworzy komentarz, jeśli został podany.
+
+        Model jest historyczny — każdy POST tworzy nowy wpis nawet jeśli ten sam
+        user już ocenił tę lokalizację. To pozwala na filtr czasowy mapy
+        (np. "jak miasto czuło się w sylwestra") bez utraty danych.
         """
-        # Wyciągnij nested location data
         location_data = validated_data.pop('location')
         point = location_data['coordinates']  # PostGIS Point z PointField
         custom_location_name = location_data.get('name', None)
-
-        # Wyciągnij treść komentarza
         comment_content = validated_data.pop('comment', None)
 
         user = self.context['request'].user
 
-        # Pobierz promień z settings
         proximity_radius_meters = getattr(
             settings,
             'CITYFEEL_LOCATION_PROXIMITY_RADIUS',
             50  # domyślnie 50 metrów
         )
-
-        # Konwertuj metry na stopnie (przybliżenie)
         proximity_radius_degrees = proximity_radius_meters / 111320.0
 
         # Proximity matching: znajdź najbliższą Location w promieniu
@@ -275,44 +273,21 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         )
 
         if nearby_location:
-            # Użyj istniejącej lokalizacji
             location = nearby_location
         else:
-            # Utwórz nową lokalizację
-            if custom_location_name:
-                location_name = custom_location_name
-            else:
-                location_name = f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
-
-            location = Location.objects.create(
-                name=location_name,
-                coordinates=point
+            location_name = (
+                custom_location_name
+                if custom_location_name
+                else f"Lat: {point.y:.4f}, Lon: {point.x:.4f}"
             )
+            location = Location.objects.create(name=location_name, coordinates=point)
 
-        # Sprawdź czy użytkownik już ma EmotionPoint dla tej Location
-        try:
-            emotion_point = EmotionPoint.objects.get(user=user, location=location)
+        emotion_point = EmotionPoint.objects.create(
+            user=user,
+            location=location,
+            **validated_data
+        )
 
-            # Aktualizuj istniejący punkt
-            emotion_point.emotional_value = validated_data.get(
-                'emotional_value',
-                emotion_point.emotional_value
-            )
-            emotion_point.privacy_status = validated_data.get(
-                'privacy_status',
-                emotion_point.privacy_status
-            )
-            emotion_point.save()
-
-        except EmotionPoint.DoesNotExist:
-            # Utwórz nowy punkt
-            emotion_point = EmotionPoint.objects.create(
-                user=user,
-                location=location,
-                **validated_data
-            )
-
-        # Utwórz komentarz jeśli został podany
         if comment_content:
             Comment.objects.create(
                 user=user,

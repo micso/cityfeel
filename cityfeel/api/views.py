@@ -4,19 +4,36 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Avg, Count, Q
+from django.db.models import Q, Avg, Count
+from django.db.models.functions import TruncHour, TruncDay, TruncWeek, TruncMonth
+from django.utils.dateparse import parse_datetime
+
+
+# Mapowanie parametru ?bucket=... na funkcję truncującą (PostgreSQL date_trunc).
+# Używane przez endpointy histogram i timeline.
+BUCKET_TRUNC = {
+    'hour': TruncHour,
+    'day': TruncDay,
+    'week': TruncWeek,
+    'month': TruncMonth,
+}
+DEFAULT_BUCKET = 'day'
 
 from emotions.models import EmotionPoint, Comment
 from map.models import Location
 from auth.models import Friendship, CFUser
 from .serializers import (
-    EmotionPointSerializer, 
-    LocationListSerializer, 
-    FriendshipSerializer, 
+    EmotionPointSerializer,
+    LocationListSerializer,
+    FriendshipSerializer,
     FriendUserSerializer,
     CommentSerializer
 )
 from .filters import LocationFilter, EmotionPointFilter
+from .aggregation import (
+    annotate_latest_per_user_avg,
+    annotate_windowed_mean_of_means_avg,
+)
 
 
 class EmotionPointViewSet(ModelViewSet):
@@ -38,18 +55,70 @@ class EmotionPointViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = EmotionPointFilter
 
+    @action(detail=False, methods=['get'], url_path='histogram')
+    def histogram(self, request):
+        """
+        Zwraca histogram aktywności emocji w czasie — dane do paska histogramu
+        pod mapą oraz do animacji "play".
+
+        Endpoint: ``GET /api/emotion-points/histogram/``
+
+        Query params (kompozycja AND z filtrami EmotionPointFilter):
+            ``bucket``: ``hour`` | ``day`` (default) | ``week`` | ``month``
+            ``bbox``, ``emotional_value``, ``created_after``, ``created_before``
+
+        Zwraca listę kubełków posortowaną chronologicznie:
+            ``[{"bucket": "2025-12-31T00:00:00Z", "count": 42, "avg_value": 3.7}, ...]``
+        """
+        bucket_name = request.query_params.get('bucket', DEFAULT_BUCKET)
+        trunc = BUCKET_TRUNC.get(bucket_name)
+        if trunc is None:
+            return Response(
+                {'detail': f"Niepoprawny bucket. Dozwolone: {sorted(BUCKET_TRUNC)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Histogram budujemy ze WSZYSTKICH wpisów (public+private) — public/private
+        # wpływa tylko na widoczność autora, nie na statystyki.
+        base_qs = EmotionPoint.objects.all()
+        filtered = self.filterset_class(request.query_params, queryset=base_qs).qs
+
+        buckets = (
+            filtered
+            .annotate(bucket=trunc('created_at'))
+            .values('bucket')
+            .annotate(count=Count('id'), avg_value=Avg('emotional_value'))
+            .order_by('bucket')
+        )
+
+        return Response([
+            {
+                'bucket': b['bucket'].isoformat() if b['bucket'] else None,
+                'count': b['count'],
+                'avg_value': float(b['avg_value']) if b['avg_value'] is not None else None,
+            }
+            for b in buckets
+        ])
+
 
 class LocationViewSet(ReadOnlyModelViewSet):
     """
     ViewSet dla endpointu /api/locations/ (READ-ONLY).
 
-    Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (avg_emotional_value).
-    Średnia liczy ze WSZYSTKICH emotion_points (zarówno publicznych jak i prywatnych).
+    Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (``avg_emotional_value``).
+    Model EmotionPoint jest historyczny — średnia liczona w jednym z dwóch trybów:
 
-    Filtrowanie:
-    - ?name=Gdańsk - filtrowanie po nazwie (icontains)
-    - ?lat=54.35&lon=18.64&radius=1000 - filtrowanie po promieniu (metry)
-    - ?bbox=18.5,54.3,18.7,54.4 - filtrowanie po bounding box
+    - **Tryb A (stan bieżący)** — używany domyślnie. Średnia z najnowszych głosów każdego usera
+      (DISTINCT ON (user_id) ORDER BY created_at DESC).
+    - **Tryb B (w oknie czasu)** — gdy podano ``?created_after`` i/lub ``?created_before``.
+      Mean-of-means: każdy user ma jedną wagę w oknie niezależnie od liczby wpisów.
+
+    Filtrowanie (kompozycja AND):
+    - ``?name=Gdańsk`` — filtrowanie po nazwie (icontains)
+    - ``?lat=54.35&lon=18.64&radius=1000`` — filtrowanie po promieniu (metry)
+    - ``?bbox=18.5,54.3,18.7,54.4`` — filtrowanie po bounding box
+    - ``?emotional_value=1,2,3`` — filtrowanie po średniej (po agregacji)
+    - ``?created_after=2025-12-31T00:00:00Z&created_before=2026-01-01T00:00:00Z`` — okno czasu
     """
     serializer_class = LocationListSerializer
     permission_classes = [IsAuthenticated]
@@ -58,15 +127,73 @@ class LocationViewSet(ReadOnlyModelViewSet):
     pagination_class = None  # Wyłącz paginację - wszystkie lokalizacje w bounding box
 
     def get_queryset(self):
-        return (
-            Location.objects.all()
-            .distinct()
-            .annotate(
-                avg_emotional_value=Avg('emotion_points__emotional_value'),
-                emotion_points_count=Count('emotion_points')
+        # Tryb agregacji wybierany na podstawie obecności filtra czasu w query params.
+        # Walidację formatu zostawiamy IsoDateTimeFilter w EmotionPointFilter (gdy będzie
+        # propagowany), tu tylko parsujemy do datetime; niepoprawne wartości → tryb A.
+        request = self.request
+        ca = parse_datetime(request.query_params.get('created_after', '') or '') if request else None
+        cb = parse_datetime(request.query_params.get('created_before', '') or '') if request else None
+
+        base = Location.objects.all().distinct()
+        if ca and cb:
+            qs = annotate_windowed_mean_of_means_avg(base, ca, cb)
+        else:
+            qs = annotate_latest_per_user_avg(base)
+
+        return qs.order_by('-avg_emotional_value', 'name')
+
+    @action(detail=True, methods=['get'], url_path='emotion-timeline')
+    def emotion_timeline(self, request, pk=None):
+        """
+        Zwraca timeline emocji dla konkretnej lokalizacji — dane do mini-wykresu
+        w popupie markera.
+
+        Endpoint: ``GET /api/locations/{id}/emotion-timeline/``
+
+        Query params:
+            ``bucket``: ``hour`` | ``day`` (default) | ``week`` | ``month``
+            ``created_after``, ``created_before``: opcjonalne ograniczenie zakresu
+
+        Zwraca listę chronologiczną:
+            ``[{"bucket": "2025-12-31T00:00:00Z", "avg_value": 3.7, "count": 12}, ...]``
+
+        Uwaga: tu używamy prostej średniej (mean of all entries in bucket), nie
+        mean-of-means — bucket jest na tyle wąski, że pojedynczy user rzadko ma
+        w nim wiele wpisów. Dla wykresu trendu prostota czytelności wygrywa.
+        """
+        bucket_name = request.query_params.get('bucket', DEFAULT_BUCKET)
+        trunc = BUCKET_TRUNC.get(bucket_name)
+        if trunc is None:
+            return Response(
+                {'detail': f"Niepoprawny bucket. Dozwolone: {sorted(BUCKET_TRUNC)}"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            .order_by('-avg_emotional_value', 'name')
+
+        qs = EmotionPoint.objects.filter(location_id=pk)
+
+        ca = parse_datetime(request.query_params.get('created_after', '') or '')
+        cb = parse_datetime(request.query_params.get('created_before', '') or '')
+        if ca:
+            qs = qs.filter(created_at__gte=ca)
+        if cb:
+            qs = qs.filter(created_at__lte=cb)
+
+        buckets = (
+            qs
+            .annotate(bucket=trunc('created_at'))
+            .values('bucket')
+            .annotate(avg_value=Avg('emotional_value'), count=Count('id'))
+            .order_by('bucket')
         )
+
+        return Response([
+            {
+                'bucket': b['bucket'].isoformat() if b['bucket'] else None,
+                'avg_value': float(b['avg_value']) if b['avg_value'] is not None else None,
+                'count': b['count'],
+            }
+            for b in buckets
+        ])
 
 
 class FriendshipViewSet(mixins.CreateModelMixin,

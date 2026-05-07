@@ -58,7 +58,9 @@ def generate_location(pk, data):
 
 def generate_emotion_points(locations):
     """
-    Generuje EmotionPoints z walidacją unique_together(user, location).
+    Generuje EmotionPoints. Model jest historyczny — wiele wpisów per (user, location)
+    dozwolone, ale fixtures generuje unikalnych userów per lokalizacja dla różnorodności
+    danych demo.
 
     Rozkład:
     - 10 lokalizacji × 0 emocji = 0
@@ -85,8 +87,8 @@ def generate_emotion_points(locations):
         location = locations[loc_idx]
         location_pk = loc_idx + 1
 
-        # Wybierz unikalnych użytkowników dla tej lokalizacji
-        # (zapewnia constraint unique_together(user, location))
+        # Wybieramy unikalnych userów per lokalizacja dla różnorodności demo
+        # (model historyczny dopuszcza duplikaty, ale fixtures pokazują różne osoby).
         users_for_location = random.sample(USERS, count)
 
         for user_id in users_for_location:
@@ -229,27 +231,6 @@ def generate_comments(locations, emotion_points):
     return comments
 
 
-def validate_unique_together(emotion_points):
-    """
-    Waliduje constraint unique_together(user, location).
-
-    Args:
-        emotion_points: Lista fixtures EmotionPoint
-
-    Raises:
-        ValueError: Jeśli constraint jest naruszony
-    """
-    seen = set()
-    for ep in emotion_points:
-        user_id = ep["fields"]["user"]
-        location_id = ep["fields"]["location"]
-        key = (user_id, location_id)
-
-        if key in seen:
-            raise ValueError(f"Duplicate (user, location): {key}")
-        seen.add(key)
-
-    print("✓ Constraint unique_together validated")
 
 
 def validate_foreign_keys(emotion_points, comments, location_count):
@@ -315,7 +296,6 @@ def main():
 
     # 4. Walidacja
     print("\n[4/5] Validating data...")
-    validate_unique_together(emotion_fixtures)
     validate_foreign_keys(emotion_fixtures, comment_fixtures, len(location_fixtures))
 
     # 5. Zapisz do JSON
