@@ -134,10 +134,34 @@ class EmotionPointFilter(filters.FilterSet):
 
     Filtry:
     - emotional_value: filtrowanie po wielu wartościach (np. ?emotional_value=1,2,3)
+    - created_after / created_before: zakres czasu (ISO 8601, np. 2025-12-31T00:00:00Z)
+    - bbox: bounding box po lokalizacji (lon_min,lat_min,lon_max,lat_max)
     """
 
     emotional_value = NumberInFilter(field_name='emotional_value', lookup_expr='in')
+    created_after = filters.IsoDateTimeFilter(field_name='created_at', lookup_expr='gte')
+    created_before = filters.IsoDateTimeFilter(field_name='created_at', lookup_expr='lte')
+    bbox = filters.CharFilter(method='filter_bbox')
 
     class Meta:
         model = EmotionPoint
-        fields = ['emotional_value']
+        fields = ['emotional_value', 'created_after', 'created_before', 'bbox']
+
+    def filter_bbox(self, queryset, name, value):
+        """
+        Filtruje wpisy emocji do tych, których lokalizacja leży w bounding box.
+        Format: lon_min,lat_min,lon_max,lat_max
+        """
+        try:
+            coords = [float(x) for x in value.split(',')]
+            if len(coords) != 4:
+                return queryset.none()
+            lon_min, lat_min, lon_max, lat_max = coords
+            if not (-180 <= lon_min <= 180) or not (-180 <= lon_max <= 180):
+                return queryset.none()
+            if not (-90 <= lat_min <= 90) or not (-90 <= lat_max <= 90):
+                return queryset.none()
+            bbox_polygon = Polygon.from_bbox((lon_min, lat_min, lon_max, lat_max))
+            return queryset.filter(location__coordinates__contained=bbox_polygon)
+        except (ValueError, AttributeError):
+            return queryset.none()

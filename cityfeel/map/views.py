@@ -40,12 +40,22 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         location = self.object
 
         # 1. OPINIE (Oceny)
-        # Pobieramy oceny wraz z powiązanymi komentarzami
-        ratings = (
+        # Po przejściu na model historyczny user może mieć wiele EmotionPoint per lokalizacja.
+        # Lista pokazuje najnowszą ocenę każdego usera (DISTINCT ON (user_id)),
+        # żeby UI nie duplikował tej samej osoby. Pełna historia jest widoczna na wykresie
+        # w popupie / panelu lokalizacji.
+        latest_per_user_ids = list(
             EmotionPoint.objects
             .filter(location=location)
+            .order_by('user_id', '-created_at')
+            .distinct('user_id')
+            .values_list('id', flat=True)
+        )
+        ratings = (
+            EmotionPoint.objects
+            .filter(id__in=latest_per_user_ids)
             .select_related('user')
-            .prefetch_related('related_comments')  # używamy related_name z modelu
+            .prefetch_related('related_comments')
             .order_by('-created_at')
         )
 
@@ -112,46 +122,27 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         comment_content = request.POST.get('comment')
         comment_privacy = request.POST.get('comment_privacy_status', privacy_status)
 
-        # A. SCENARIUSZ: Dodanie/Edycja Oceny (z opcjonalnym komentarzem)
+        # A. SCENARIUSZ: Dodanie nowej Oceny (z opcjonalnym komentarzem).
+        # Model jest historyczny: każdy klik = nowy EmotionPoint z własnym created_at.
+        # Stare wpisy zostają — pozwalają na filtr czasowy mapy i wykres trendu lokalizacji.
         if emotional_value:
-            emotion_point, created = EmotionPoint.objects.update_or_create(
+            emotion_point = EmotionPoint.objects.create(
                 user=request.user,
                 location=self.object,
-                defaults={
-                    'emotional_value': emotional_value,
-                    'privacy_status': privacy_status
-                }
+                emotional_value=emotional_value,
+                privacy_status=privacy_status,
             )
             messages.success(request, 'Twoja ocena została zapisana!')
 
-            # Obsługa komentarza DO TEJ oceny
+            # Komentarz, jeśli podany, wiążemy z TĄ konkretną nową oceną.
             if comment_content and comment_content.strip():
-                # Sprawdź czy user ma już komentarz do tej oceny
-                existing_comment = Comment.objects.filter(
+                Comment.objects.create(
                     user=request.user,
                     location=self.object,
-                    emotion_point=emotion_point
-                ).first()
-
-                if existing_comment:
-                    existing_comment.content = comment_content.strip()
-                    existing_comment.privacy_status = privacy_status
-                    existing_comment.save()
-                else:
-                    Comment.objects.create(
-                        user=request.user,
-                        location=self.object,
-                        emotion_point=emotion_point,  # WIĄŻEMY Z OCENĄ
-                        content=comment_content.strip(),
-                        privacy_status=privacy_status
-                    )
-            elif not created:
-                # Jeśli user edytował ocenę i wyczyścił pole komentarza -> usuń stary komentarz oceny
-                Comment.objects.filter(
-                    user=request.user,
-                    location=self.object,
-                    emotion_point=emotion_point
-                ).delete()
+                    emotion_point=emotion_point,
+                    content=comment_content.strip(),
+                    privacy_status=privacy_status,
+                )
 
         # B. SCENARIUSZ: Tylko Samodzielny Komentarz (bez wysyłania emotional_value)
         elif comment_content and comment_content.strip():

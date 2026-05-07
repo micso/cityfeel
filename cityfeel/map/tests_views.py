@@ -285,8 +285,12 @@ class LocationDetailViewTestCase(TestCase):
         self.assertEqual(emotion.emotional_value, 5)
         self.assertEqual(emotion.privacy_status, 'public')
 
-    def test_post_update_existing_emotion_rating(self):
-        """Test aktualizacji istniejącej oceny (update_or_create)."""
+    def test_post_second_emotion_creates_new_history_entry(self):
+        """
+        Po przejściu na model historyczny ponowne wystawienie oceny przez tego samego usera
+        dla tej samej lokalizacji tworzy NOWY wpis (nie nadpisuje starego). Stary zostaje
+        w historii — niezbędne dla filtra czasowego mapy.
+        """
         # Utwórz początkową ocenę
         EmotionPoint.objects.create(
             user=self.user1, location=self.location,
@@ -301,14 +305,30 @@ class LocationDetailViewTestCase(TestCase):
         }
         response = self.client.post(self.url, data)
 
-        # Sprawdź redirect
         self.assertEqual(response.status_code, 302)
 
-        # Sprawdź że nie utworzono duplikatu
-        self.assertEqual(EmotionPoint.objects.count(), 1)
-        emotion = EmotionPoint.objects.first()
-        self.assertEqual(emotion.emotional_value, 5)
-        self.assertEqual(emotion.privacy_status, 'private')
+        # Stary wpis zachowany + nowy dodany → 2 wpisy
+        self.assertEqual(EmotionPoint.objects.count(), 2)
+
+        # Najnowszy wpis (latest per user) ma nowe wartości
+        latest = (
+            EmotionPoint.objects
+            .filter(user=self.user1, location=self.location)
+            .order_by('-created_at')
+            .first()
+        )
+        self.assertEqual(latest.emotional_value, 5)
+        self.assertEqual(latest.privacy_status, 'private')
+
+        # Stary wpis nadal istnieje z oryginalnymi wartościami
+        oldest = (
+            EmotionPoint.objects
+            .filter(user=self.user1, location=self.location)
+            .order_by('created_at')
+            .first()
+        )
+        self.assertEqual(oldest.emotional_value, 3)
+        self.assertEqual(oldest.privacy_status, 'public')
 
     def test_post_default_privacy_status_is_public(self):
         """Test że domyślny privacy_status = 'public'."""

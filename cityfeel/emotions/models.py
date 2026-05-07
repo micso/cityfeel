@@ -7,8 +7,17 @@ from map.models import Location
 
 class EmotionPoint(models.Model):
     """
-    Punkt emocji - opinia użytkownika o lokalizacji.
-    Reprezentuje emocje użytkowników związane z konkretnymi miejscami w mieście.
+    Punkt emocji - pojedynczy wpis emocji użytkownika o lokalizacji w określonym momencie.
+
+    Model jest historyczny: użytkownik może mieć wiele wpisów dla tej samej lokalizacji
+    (każdy klik = nowy rekord z własnym created_at). To pozwala na filtr czasowy mapy
+    ("jak miasto czuło się w sylwestra") bez utraty danych.
+
+    Agregacje:
+    - "Stan bieżący" = średnia z najnowszego wpisu każdego usera per lokalizacja
+      (DISTINCT ON (user_id) ORDER BY created_at DESC).
+    - "W oknie czasu" = mean-of-means (każdy user dostaje jedną wagę w oknie,
+      niezależnie od liczby wpisów).
 
     Model prywatności:
     - Wszystkie EmotionPoints (publiczne i prywatne) są widoczne na mapie i wpływają na statystyki lokalizacji
@@ -67,11 +76,13 @@ class EmotionPoint(models.Model):
         verbose_name = "Punkt emocji"
         verbose_name_plural = "Punkty emocji"
         db_table = "emotions_emotion_point"
-        unique_together = [('user', 'location')]
         indexes = [
             models.Index(fields=['user', 'created_at'], name='emotions_user_created_idx'),
             models.Index(fields=['location', 'emotional_value'], name='emotions_loc_value_idx'),
             models.Index(fields=['privacy_status'], name='emotions_privacy_idx'),
+            # Wspiera DISTINCT ON (location_id, user_id) ORDER BY ... created_at DESC
+            # — agregacja "latest per user at location" w trybie A.
+            models.Index(fields=['location', 'user', '-created_at'], name='emotions_loc_user_created_idx'),
         ]
         ordering = ['-created_at']
 
