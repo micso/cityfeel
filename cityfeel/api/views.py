@@ -1,3 +1,5 @@
+# cityfeel/api/views.py
+
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet, GenericViewSet
 from rest_framework import mixins, status
 from rest_framework.decorators import action
@@ -19,7 +21,7 @@ BUCKET_TRUNC = {
 }
 DEFAULT_BUCKET = 'day'
 
-from emotions.models import EmotionPoint, Comment
+from emotions.models import EmotionPoint, Comment, Report
 from map.models import Location
 from auth.models import Friendship, CFUser
 from .serializers import (
@@ -27,7 +29,8 @@ from .serializers import (
     LocationListSerializer,
     FriendshipSerializer,
     FriendUserSerializer,
-    CommentSerializer
+    CommentSerializer,
+    ReportSerializer
 )
 from .filters import LocationFilter, EmotionPointFilter
 from .aggregation import (
@@ -285,3 +288,9 @@ class CommentViewSet(mixins.CreateModelMixin, GenericViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class ReportViewSet(mixins.CreateModelMixin, GenericViewSet):
+    serializer_class = ReportSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Report.objects.all()

@@ -1,3 +1,5 @@
+# cityfeel/emotions/models.py
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -207,3 +209,80 @@ class Photo(models.Model):
 
     def __str__(self):
         return f"Zdjęcie do lokalizacji {self.location.name}"
+
+
+class Report(models.Model):
+    REPORT_REASONS = [
+        ('spam', 'Spam lub reklama'),
+        ('hate_speech', 'Mowa nienawiści / Nękanie'),
+        ('inappropriate', 'Nieodpowiednia treść'),
+        ('fake_location', 'Fałszywa lokalizacja'),
+        ('other', 'Inne'),
+    ]
+    
+    REPORT_STATUS = [
+        ('pending', 'Oczekujące'),
+        ('resolved', 'Rozwiązane (Akceptacja)'),
+        ('dismissed', 'Odrzucone (Brak naruszeń)'),
+    ]
+
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='reports_submitted',
+        verbose_name='Zgłaszający'
+    )
+    
+    location = models.ForeignKey(
+        Location, 
+        on_delete=models.CASCADE, 
+        null=True, blank=True, 
+        related_name='reports',
+        verbose_name='Zgłoszona Lokalizacja'
+    )
+    
+    emotion_point = models.ForeignKey(
+        EmotionPoint, 
+        on_delete=models.CASCADE, 
+        null=True, blank=True, 
+        related_name='reports',
+        verbose_name='Zgłoszony Punkt Emocji'
+    )
+    
+    comment = models.ForeignKey(
+        Comment, 
+        on_delete=models.CASCADE, 
+        null=True, blank=True, 
+        related_name='reports',
+        verbose_name='Zgłoszony Komentarz'
+    )
+
+    reason = models.CharField(max_length=20, choices=REPORT_REASONS, verbose_name='Powód')
+    description = models.TextField(blank=True, null=True, verbose_name='Dodatkowy opis')
+    status = models.CharField(max_length=20, choices=REPORT_STATUS, default='pending', verbose_name='Status')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Data zgłoszenia')
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name='Data rozpatrzenia')
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True, 
+        related_name='reports_resolved',
+        verbose_name='Rozpatrzone przez'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Zgłoszenie'
+        verbose_name_plural = 'Zgłoszenia'
+
+    def __str__(self):
+        if self.location:
+            target = f"Lokalizacja {self.location.id}"
+        elif self.emotion_point:
+            target = f"Punkt {self.emotion_point.id}"
+        elif self.comment:
+            target = f"Komentarz {self.comment.id}"
+        else:
+            target = "Nieznany cel"
+        return f"Zgłoszenie {self.id} ({target}) - {self.get_status_display()}"

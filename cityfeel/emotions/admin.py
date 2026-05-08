@@ -1,6 +1,9 @@
+# cityfeel/emotions/admin.py
+
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import EmotionPoint, Comment, Photo
+from django.utils import timezone
+from .models import EmotionPoint, Comment, Photo, Report
 
 
 @admin.register(EmotionPoint)
@@ -96,3 +99,41 @@ class PhotoAdmin(admin.ModelAdmin):
         return "Brak zdjęcia"
 
     image_preview.short_description = 'Podgląd'
+
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+    list_display = ('id', 'reporter', 'target_info', 'reason', 'status', 'created_at')
+    list_filter = ('status', 'reason', 'created_at')
+    search_fields = ('reporter__username', 'description')
+    readonly_fields = ('created_at', 'resolved_at', 'resolved_by')
+    
+    actions = ['mark_as_resolved', 'mark_as_dismissed']
+
+    def target_info(self, obj):
+        if obj.location:
+            return f"Lokalizacja: {obj.location.name} (ID: {obj.location.id})"
+        elif obj.emotion_point:
+            return f"Punkt: {obj.emotion_point.id}"
+        elif obj.comment:
+            return f"Komentarz: {obj.comment.id}"
+        return "-"
+    target_info.short_description = "Zgłoszony obiekt"
+
+    def mark_as_resolved(self, request, queryset):
+        queryset.update(
+            status='resolved', 
+            resolved_by=request.user, 
+            resolved_at=timezone.now()
+        )
+        self.message_user(request, "Wybrane zgłoszenia zostały oznaczone jako Rozwiązane.")
+    mark_as_resolved.short_description = "Oznacz jako Rozwiązane (Akceptacja)"
+
+    def mark_as_dismissed(self, request, queryset):
+        queryset.update(
+            status='dismissed', 
+            resolved_by=request.user, 
+            resolved_at=timezone.now()
+        )
+        self.message_user(request, "Wybrane zgłoszenia zostały odrzucone.")
+    mark_as_dismissed.short_description = "Oznacz jako Odrzucone"
