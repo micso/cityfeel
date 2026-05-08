@@ -5,7 +5,7 @@ from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Q
 
-from emotions.models import EmotionPoint, Comment
+from emotions.models import EmotionPoint, Comment, Report
 from map.models import Location
 from auth.models import Friendship, CFUser
 
@@ -157,14 +157,18 @@ class LocationListSerializer(serializers.ModelSerializer):
         'nullable': True,
         'description': 'Ostatni komentarz (publiczny lub prywatny) dodany w tej lokalizacji.',
         'properties': {
+            'id': {'type': 'integer'},
             'username': {'type': 'string'},
             'content': {'type': 'string'},
-            'emotional_value': {'type': 'integer'}
+            'emotional_value': {'type': 'integer'},
+            'is_mine': {'type': 'boolean'}
         },
         'example': {
+            'id': 15,
             'username': 'JanKowalski',
             'content': 'Bardzo ładne miejsce, polecam!',
-            'emotional_value': 5
+            'emotional_value': 5,
+            'is_mine': False
         }
     })
     def get_latest_comment(self, obj):
@@ -197,9 +201,11 @@ class LocationListSerializer(serializers.ModelSerializer):
                         username_display = "Anonim"
 
                 return {
+                    'id': comment.id,
                     'username': username_display,
                     'content': content[:100] + '...' if len(content) > 100 else content,
-                    'emotional_value': emotional_val
+                    'emotional_value': emotional_val,
+                    'is_mine': (current_user == comment.user) if current_user else False
                 }
         except Exception as e:
             return None
@@ -395,4 +401,15 @@ class CommentSerializer(serializers.ModelSerializer):
         if 'emotion_point' in validated_data:
             validated_data['location'] = validated_data['emotion_point'].location
 
+        return super().create(validated_data)
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'location', 'emotion_point', 'comment', 'reason', 'description', 'status', 'created_at']
+        read_only_fields = ['id', 'status', 'created_at']
+
+    def create(self, validated_data):
+        validated_data['reporter'] = self.context['request'].user
         return super().create(validated_data)

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Moderatora - Zgłoszenia{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-danger"><i class="bi bi-shield-exclamation"></i> Panel Moderatora - Zgłoszenia</h2>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Typ</th>
+                        <th>Data</th>
+                        <th>Zgłaszający</th>
+                        <th>Powód</th>
+                        <th>Treść / Miejsce</th>
+                        <th class="text-end">Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>#{{ report.id }}</td>
+                        <td>
+                            {% if report.comment %}
+                            <span class="badge bg-primary">Komentarz</span>
+                            {% elif report.location %}
+                            <span class="badge bg-secondary">Lokalizacja</span>
+                            {% else %}
+                            <span class="badge bg-dark">Nieznany</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ report.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>{{ report.reporter.username }}</td>
+                        <td>
+                            <strong>{{ report.get_reason_display|default:report.reason }}</strong>
+                            {% if report.description %}
+                            <br><small class="text-muted">{{ report.description }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if report.comment %}
+                            <span class="fst-italic">"{{ report.comment.content|truncatechars:40 }}"</span>
+                            {% elif report.location %}
+                            {{ report.location.name }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if report.comment and report.comment.location %}
+                            <a href="{% url 'map:location_detail' report.comment.location.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                <i class="bi bi-eye"></i> Zobacz
+                            </a>
+                            {% elif report.location %}
+                            <a href="{% url 'map:location_detail' report.location.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                <i class="bi bi-eye"></i> Zobacz
+                            </a>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-secondary" disabled>Brak linku</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">Brak zgłoszeń w systemie. Pusto i bezpiecznie!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

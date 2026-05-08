@@ -1,3 +1,5 @@
+# cityfeel/api/urls.py
+
 from django.urls import path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework import routers
@@ -10,6 +12,7 @@ router.register('emotion-points', views.EmotionPointViewSet, basename='emotion_p
 router.register('locations', views.LocationViewSet, basename='locations')
 router.register('friendship', views.FriendshipViewSet, basename='friendship')
 router.register('comments', views.CommentViewSet, basename='comments')
+router.register('reports', views.ReportViewSet, basename='reports')
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),

@@ -1,9 +1,12 @@
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import HttpResponseForbidden
 from django.contrib import messages
-from .models import EmotionPoint, Comment, Photo
+from django.contrib.admin.views.decorators import staff_member_required
+
+# Dodany model Report do importów
+from .models import EmotionPoint, Comment, Photo, Report
 
 
 def check_owner_or_staff(user, obj_user):
@@ -72,3 +75,21 @@ def edit_photo_caption(request, pk):
 
     messages.success(request, "Opis zdjęcia został zaktualizowany.")
     return redirect('map:location_detail', pk=photo.location.id)
+
+
+@staff_member_required
+def admin_reports_view(request):
+    """
+    Widok panelu moderatora z listą zgłoszeń.
+    Tylko dla użytkowników z uprawnieniami staff (admin/moderator).
+    """
+    # Pobieramy zgłoszenia i sortujemy od najnowszego. 
+    # select_related przyspiesza ładowanie bazy.
+    reports = Report.objects.select_related('reporter', 'location', 'comment', 'comment__location').order_by('-created_at')
+
+    context = {
+        'reports': reports
+    }
+    
+    # Skoro daliśmy plik admin_reports.html do głównego folderu templates, odwołujemy się do niego bezpośrednio
+    return render(request, 'admin_reports.html', context)

@@ -71,23 +71,23 @@
     let proximityRadius = 50;
     let emotionPointsUrl = '/api/emotion-points/';
 
-    // Time filter state — null,null = filtr nieaktywny (tryb A na backendzie)
+    // Time filter state
     const timeFilter = {
-        from: null,            // Date
-        to: null,              // Date
-        dataMin: null,         // Date — najstarszy znany wpis (z histogramu)
-        dataMax: null,         // Date — najnowszy znany wpis
-        slider: null,          // instancja noUiSlider
-        chart: null,           // instancja Chart.js
-        debounceTimer: null,   // własny timer (osobny od mapowego)
-        playInterval: null,    // setInterval dla animacji
+        from: null,
+        to: null,
+        dataMin: null,
+        dataMax: null,
+        slider: null,
+        chart: null,
+        debounceTimer: null,
+        playInterval: null,
         playing: false,
-        ready: false,          // czy suwak ma sensowny zakres (są dane)
-        bucket: 'day',         // aktualna granularność histogramu
-        bucketAvgs: [],        // średnia emocja per kubełek (do tooltipów)
-        savedRange: null,      // {from, to} zapamiętany przed startem animacji
-        fullBuckets: null,     // cache pełnego histogramu (overview mode)
-        histogramMode: 'overview', // 'overview' (pełny) lub 'zoomed' (tylko zakres)
+        ready: false,
+        bucket: 'day',
+        bucketAvgs: [],
+        savedRange: null,
+        fullBuckets: null,
+        histogramMode: 'overview',
     };
 
     // === INICJALIZACJA ===
@@ -107,6 +107,7 @@
         initHeatmapControls();
         initTimeFilterToggle();
         initTimeFilter();
+        initReportModal();
 
         markerClusterGroup = L.markerClusterGroup({
             maxClusterRadius: 50,
@@ -221,8 +222,6 @@
         const ne = bounds.getNorthEast().wrap();
         const bbox = [sw.lng, sw.lat, ne.lng, ne.lat].join(',');
 
-        // Filtr czasu wpływa na agregację — przy aktywnym filtrze NIE skipujemy nawet
-        // gdy bbox bez zmian, dlatego porównanie obejmuje też zakres czasu.
         const timeKey = timeFilter.from && timeFilter.to
             ? `${timeFilter.from.toISOString()}|${timeFilter.to.toISOString()}`
             : '';
@@ -282,7 +281,7 @@
     }
 
     function createMarker(location) {
-        const { coordinates, avg_emotional_value, name, id, emotion_points_count, comments_count } = location;
+        const { coordinates, avg_emotional_value, id, emotion_points_count, comments_count, latest_comment } = location;
         const { latitude, longitude } = coordinates;
 
         let color;
@@ -306,16 +305,34 @@
 
         marker.bindPopup(createPopupContent(location));
 
-        // Wykres trendu emocji w popupie (Chart.js). Renderujemy DOPIERO przy otwarciu
-        // popupa — wcześniej canvas nie jest w DOM, więc Chart.js nie ma się gdzie zaczepić.
-        marker.on('popupopen', () => loadAndRenderLocationTimeline(id));
+        marker.on('popupopen', () => {
+            loadAndRenderLocationTimeline(id);
+
+            // Rejestracja kliknięcia "Zgłoś lokalizację"
+            const reportLocBtn = document.querySelector(`.btn-report-location[data-location-id="${id}"]`);
+            if (reportLocBtn) {
+                reportLocBtn.addEventListener('click', () => {
+                    openReportModal('location', id);
+                });
+            }
+
+            // Rejestracja kliknięcia "Zgłoś komentarz"
+            if (latest_comment && latest_comment.id) {
+                const reportComBtn = document.querySelector(`.btn-report-comment[data-comment-id="${latest_comment.id}"]`);
+                if (reportComBtn) {
+                    reportComBtn.addEventListener('click', () => {
+                        openReportModal('comment', latest_comment.id);
+                    });
+                }
+            }
+        });
         return marker;
     }
 
     function loadAndRenderLocationTimeline(locationId) {
         const canvas = document.querySelector(`canvas.location-timeline[data-location-id="${locationId}"]`);
         if (!canvas || typeof Chart === 'undefined') return;
-        if (canvas.dataset.rendered === '1') return;  // jednokrotne rysowanie
+        if (canvas.dataset.rendered === '1') return;
 
         fetch(`/api/locations/${locationId}/emotion-timeline/?bucket=day`, {
             credentials: 'same-origin',
@@ -373,8 +390,11 @@
 
         let commentHtml = '';
         if (latest_comment) {
+            // Bezpieczne sprawdzanie czy komentarz jest "cudzy" i jesteśmy zalogowani
+            const showReportIcon = latest_comment.id && !latest_comment.is_mine && isUserAuthenticated;
+
             commentHtml = `
-        <div class="mt-2 mb-2 p-2 bg-light border-start border-3 border-primary rounded-end text-start">
+        <div class="mt-2 mb-2 p-2 bg-light border-start border-3 border-primary rounded-end text-start position-relative pe-4">
             <div class="d-flex justify-content-between small text-muted mb-1">
                 <strong>${escapeHtml(latest_comment.username)}</strong>
                 <span>${latest_comment.emotional_value ? latest_comment.emotional_value + '/5' : ''}</span>
@@ -382,6 +402,10 @@
             <p class="mb-0 small fst-italic text-dark" style="line-height: 1.2;">
                 "${escapeHtml(latest_comment.content)}"
             </p>
+            ${showReportIcon ? `
+            <button class="btn btn-sm btn-link text-danger position-absolute top-50 end-0 translate-middle-y p-1 btn-report-comment" data-comment-id="${latest_comment.id}" title="Zgłoś komentarz">
+                <i class="bi bi-exclamation-circle-fill fs-5"></i>
+            </button>` : ''}
         </div>
       `;
         } else {
@@ -411,7 +435,10 @@
 
         ${commentHtml}
 
-        <a href="${detailsUrl}" class="btn btn-sm btn-primary w-100 mt-1">Zobacz szczegóły</a>
+        <div class="d-flex gap-2 mt-1">
+            <a href="${detailsUrl}" class="btn btn-sm btn-primary flex-grow-1">Zobacz szczegóły</a>
+            ${isUserAuthenticated ? `<button class="btn btn-sm btn-outline-danger btn-report-location" data-location-id="${id}" title="Zgłoś lokalizację"><i class="bi bi-flag"></i> Zgłoś</button>` : ''}
+        </div>
       </div>
     `;
     }
@@ -665,7 +692,7 @@
         return null;
     }
 
-    // === NOWE FUNKCJE HEATMAPY (Dodane na końcu) ===
+    // === NOWE FUNKCJE HEATMAPY ===
 
     function initTimeFilterToggle() {
         const toggle = document.getElementById('timeFilterToggle');
@@ -734,7 +761,6 @@
         if (!heatLayerBad) return;
 
         if (isHeatmapActive) {
-            // Włącz heatmapę (wszystkie 3 warstwy)
             if (map.hasLayer(markerClusterGroup)) map.removeLayer(markerClusterGroup);
 
             if (!map.hasLayer(heatLayerBad)) map.addLayer(heatLayerBad);
@@ -743,7 +769,6 @@
 
             updateHeatmapData(currentLocationsData);
         } else {
-            // Wyłącz heatmapę
             if (map.hasLayer(heatLayerBad)) map.removeLayer(heatLayerBad);
             if (map.hasLayer(heatLayerNeutral)) map.removeLayer(heatLayerNeutral);
             if (map.hasLayer(heatLayerGood)) map.removeLayer(heatLayerGood);
@@ -751,8 +776,6 @@
             if (!map.hasLayer(markerClusterGroup)) {
                 map.addLayer(markerClusterGroup);
             }
-
-            // NAPRAWA: Zawsze odśwież markery przy powrocie do normalnego widoku!
             displayLocations(currentLocationsData);
         }
     }
@@ -760,7 +783,6 @@
     function updateHeatmapData(locations) {
         if (!heatLayerBad) return;
 
-        // Rozdzielamy punkty na 3 "koszyki"
         const badPoints = [];
         const neutralPoints = [];
         const goodPoints = [];
@@ -770,32 +792,24 @@
             const point = [
                 loc.coordinates.latitude,
                 loc.coordinates.longitude,
-                0.8 // Stała wysoka intensywność (kolor zależy od warstwy, nie od zagęszczenia)
+                0.8
             ];
 
-            // 1. ZŁA (1.0 - 2.5)
             if (val < 2.5) {
                 badPoints.push(point);
-            }
-            // 2. NEUTRALNA (2.5 - 3.5)
-            else if (val >= 2.5 && val < 3.8) {
+            } else if (val >= 2.5 && val < 3.8) {
                 neutralPoints.push(point);
-            }
-            // 3. DOBRA (3.5 - 5.0)
-            else {
+            } else {
                 goodPoints.push(point);
             }
         });
 
-        // Aktualizujemy każdą warstwę niezależnie
         heatLayerBad.setLatLngs(badPoints);
         heatLayerNeutral.setLatLngs(neutralPoints);
         heatLayerGood.setLatLngs(goodPoints);
     }
 
     // === FILTR CZASOWY ===
-    // Pasek z histogramem na dole mapy: dwa uchwyty (od–do), presety, animacja "play".
-    // Histogram pokazuje rozkład emocji w czasie dla widocznego bbox; suwak wybiera okno.
 
     function initTimeFilter() {
         if (typeof noUiSlider === 'undefined' || typeof Chart === 'undefined') {
@@ -810,7 +824,6 @@
 
         if (!sliderEl || !canvas || !playBtn || !presetsEl) return;
 
-        // Dummy bezpieczna baza zakresu — zostanie nadpisana po pobraniu histogramu.
         const now = Date.now();
         const yearAgo = now - 365 * 24 * 3600 * 1000;
 
@@ -818,13 +831,12 @@
             start: [yearAgo, now],
             connect: true,
             range: { min: yearAgo, max: now },
-            step: 60 * 60 * 1000,  // 1 godzina
+            step: 60 * 60 * 1000,
             behaviour: 'drag-tap',
             tooltips: false,
         });
 
         timeFilter.slider.on('update', (values) => {
-            // Tylko etykieta + desaturacja słupków — refresh markers przy 'set'.
             timeFilter.from = new Date(parseFloat(values[0]));
             timeFilter.to = new Date(parseFloat(values[1]));
             updateTimeRangeLabel();
@@ -832,7 +844,6 @@
         });
 
         timeFilter.slider.on('start', () => {
-            // Chwytamy suwak: pokaż overview, żeby user widział pełen kontekst.
             if (timeFilter.histogramMode === 'zoomed' && timeFilter.fullBuckets) {
                 timeFilter.histogramMode = 'overview';
                 runZoomTransition('out', () => renderChartOnly(timeFilter.fullBuckets));
@@ -842,7 +853,6 @@
         timeFilter.slider.on('set', () => {
             scheduleTimeFilterRefresh();
             clearActivePreset();
-            // Puszczamy: zoom do wybranego zakresu (re-fetch z time params dla finer bucket).
             if (timeFilter.from && timeFilter.to) {
                 timeFilter.histogramMode = 'zoomed';
                 fetchHistogramZoomed();
@@ -852,7 +862,6 @@
             }
         });
 
-        // Histogram: bar chart, oś X = bucket, Y = count, kolor = avg emocji.
         timeFilter.chart = new Chart(canvas, {
             type: 'bar',
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
@@ -896,7 +905,6 @@
         playBtn.addEventListener('click', toggleAnimation);
 
         map.on('moveend', debounceTimeHistogram);
-        // Pierwsze pobranie po krótkim opóźnieniu, by mapa zdążyła się ustawić.
         setTimeout(loadTimeHistogram, 400);
     }
 
@@ -911,9 +919,7 @@
     }
 
     function loadTimeHistogram() {
-        // Panel ukryty → filtr wyłączony, nie marnuj zapytań.
         if (isTimeFilterPanelHidden()) return;
-        // Pełny histogram (overview) — bez params czasu, cache + slider scaffolding.
         const bbox = currentBboxString();
         const bucket = pickBucketForCurrentRange();
         timeFilter.bucket = bucket;
@@ -929,7 +935,6 @@
             .then(buckets => {
                 timeFilter.fullBuckets = buckets;
                 renderHistogram(buckets);
-                // Po update slidera/dataMin/Max — jeśli jesteśmy zoomed, dorzuć zoom view.
                 if (timeFilter.histogramMode === 'zoomed' && timeFilter.from && timeFilter.to) {
                     fetchHistogramZoomed();
                 }
@@ -973,8 +978,6 @@
         return [sw.lng, sw.lat, ne.lng, ne.lat].join(',');
     }
 
-    // Animowane przejście zoom in/out: fade-out → swap data → fade-in.
-    // direction: 'in' (do zakresu) lub 'out' (z zakresu do całości)
     function runZoomTransition(direction, swapFn) {
         const timeline = document.querySelector('.tf-timeline');
         if (!timeline) { swapFn(); return; }
@@ -986,7 +989,6 @@
         }, 140);
     }
 
-    // Render chart-only (bez modyfikacji slidera) — używane w trybie zoomed.
     function renderChartOnly(buckets) {
         if (!timeFilter.chart) return;
         if (!buckets || buckets.length === 0) {
@@ -1009,7 +1011,6 @@
     }
 
     function pickBucketForCurrentRange() {
-        // Fallback: gdy filtr "Wszystko" (from/to=null), bucket dobierany do całej historii.
         const from = timeFilter.from || timeFilter.dataMin;
         const to = timeFilter.to || timeFilter.dataMax;
         if (!from || !to) return 'day';
@@ -1047,22 +1048,18 @@
 
         const tsMin = new Date(buckets[0].bucket).getTime();
         const tsMaxRaw = new Date(buckets[buckets.length - 1].bucket).getTime();
-        // Pojedynczy bucket → poszerz zakres o 1 dzień, by uchwyt miał gdzie chodzić.
         const tsMax = tsMaxRaw > tsMin ? tsMaxRaw : tsMin + 24 * 3600 * 1000;
 
         timeFilter.dataMin = new Date(tsMin);
         timeFilter.dataMax = new Date(tsMax);
         updateAxisTicks();
 
-        // Null-state oznacza preset "Wszystko" — zachowujemy go po slider.set
-        // (które nieuchronnie odpala 'update' i ustawia from/to na Date).
         const wasAllRange = !timeFilter.from && !timeFilter.to;
         const oldFrom = timeFilter.from ? timeFilter.from.getTime() : tsMin;
         const oldTo = timeFilter.to ? timeFilter.to.getTime() : tsMax;
         timeFilter.slider.updateOptions({ range: { min: tsMin, max: tsMax } }, false);
 
         if (!timeFilter.ready) {
-            // Pierwsze ładowanie — ustaw uchwyty na cały zakres bez aktywacji filtra.
             timeFilter.slider.set([tsMin, tsMax], false);
             timeFilter.from = null;
             timeFilter.to = null;
@@ -1182,7 +1179,6 @@
         return CONFIG.EMOTION_COLORS[5.0];
     }
 
-    // Desaturuje słupki poza [from, to], aktualizuje licznik ocen w oknie.
     function applyRangeOverlay() {
         if (!timeFilter.chart) return;
         const labels = timeFilter.chart.data.labels;
@@ -1194,7 +1190,6 @@
         const fromTs = timeFilter.from ? timeFilter.from.getTime() : null;
         const toTs = timeFilter.to ? timeFilter.to.getTime() : null;
         const noFilter = fromTs == null && toTs == null;
-        // W trybie zoomed backend już zwrócił tylko słupki z zakresu — nie desaturuj.
         const isZoomed = timeFilter.histogramMode === 'zoomed';
 
         const counts = timeFilter.chart.data.datasets[0].data;
@@ -1227,7 +1222,6 @@
         const spans = axis.querySelectorAll('span');
         if (spans.length < 3) return;
 
-        // Oś opisuje aktualnie wyświetlone słupki histogramu (nie pełen zakres slidera).
         const labels = timeFilter.chart && timeFilter.chart.data.labels;
         if (!labels || labels.length === 0) {
             spans[0].textContent = '';
@@ -1271,7 +1265,6 @@
         let to = max;
 
         if (preset === 'all') {
-            // Kasujemy filtr — backend wraca do trybu A.
             timeFilter.slider.set([min, max], false);
             timeFilter.from = null;
             timeFilter.to = null;
@@ -1290,7 +1283,6 @@
         applyRangeOverlay();
         scheduleTimeFilterRefresh();
 
-        // "Wszystko" → overview (z cache jeśli mamy). Inny preset → zoom.
         if (preset === 'all') {
             timeFilter.histogramMode = 'overview';
             if (timeFilter.fullBuckets) {
@@ -1326,12 +1318,10 @@
     function startAnimation() {
         if (!timeFilter.ready || !timeFilter.dataMin || !timeFilter.dataMax) return;
 
-        // Animuj wybrany zakres (preset/suwak); jeśli filtr nieaktywny — całą historię.
         const hasRange = timeFilter.from && timeFilter.to;
         const min = hasRange ? timeFilter.from.getTime() : timeFilter.dataMin.getTime();
         const max = hasRange ? timeFilter.to.getTime() : timeFilter.dataMax.getTime();
 
-        // Zapamiętaj zakres przed animacją — przywrócimy go po stop.
         timeFilter.savedRange = {
             from: timeFilter.from ? timeFilter.from.getTime() : null,
             to: timeFilter.to ? timeFilter.to.getTime() : null,
@@ -1339,7 +1329,6 @@
         const totalSpan = max - min;
         if (totalSpan <= 0) return;
 
-        // Okno = 1/15 zakresu, krok = 1/60, tick co 200ms → przejazd ~12s.
         const windowSize = Math.max(60 * 60 * 1000, totalSpan / 15);
         const step = Math.max(60 * 1000, totalSpan / 60);
         const tickMs = 200;
@@ -1374,7 +1363,6 @@
         document.getElementById('playLabel').textContent = 'Animuj';
         document.getElementById('playAnimation').classList.remove('playing');
 
-        // Przywróć zakres sprzed animacji.
         const saved = timeFilter.savedRange;
         if (saved) {
             const dataMin = timeFilter.dataMin.getTime();
@@ -1387,6 +1375,114 @@
             updateTimeRangeLabel(from, to);
             loadVisibleLocations(true);
             timeFilter.savedRange = null;
+        }
+    }
+
+    function initReportModal() {
+        if (document.getElementById('reportModal')) return;
+        const modalHtml = `
+        <div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="reportModalTitle">Zgłoś naruszenie</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+              </div>
+              <div class="modal-body">
+                <div id="reportErrors" class="alert alert-danger d-none"></div>
+                <input type="hidden" id="reportTargetType">
+                <input type="hidden" id="reportTargetId">
+                <div class="mb-3">
+                  <label class="form-label">Powód zgłoszenia</label>
+                  <select class="form-select" id="reportReason">
+                    <option value="spam">Spam lub reklama</option>
+                    <option value="hate_speech">Mowa nienawiści / Nękanie</option>
+                    <option value="inappropriate">Nieodpowiednia treść</option>
+                    <option value="fake_location">Fałszywa lokalizacja</option>
+                    <option value="other">Inne</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Dodatkowy opis</label>
+                  <textarea class="form-control" id="reportDescription" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="button" class="btn btn-danger" id="submitReportBtn">Wyślij zgłoszenie</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('submitReportBtn').addEventListener('click', submitReport);
+    }
+
+    function openReportModal(targetType, targetId) {
+        if (!isUserAuthenticated) {
+            alert("Musisz być zalogowany, aby zgłosić zawartość.");
+            return;
+        }
+        document.getElementById('reportTargetType').value = targetType;
+        document.getElementById('reportTargetId').value = targetId;
+        document.getElementById('reportReason').value = 'spam';
+        document.getElementById('reportDescription').value = '';
+        document.getElementById('reportErrors').classList.add('d-none');
+
+        document.getElementById('reportModalTitle').textContent = targetType === 'comment' ? 'Zgłoś komentarz' : 'Zgłoś lokalizację';
+
+        const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+        modal.show();
+    }
+
+    async function submitReport() {
+        const targetType = document.getElementById('reportTargetType').value;
+        const targetId = document.getElementById('reportTargetId').value;
+        const reason = document.getElementById('reportReason').value;
+        const desc = document.getElementById('reportDescription').value;
+        const btn = document.getElementById('submitReportBtn');
+        const errDiv = document.getElementById('reportErrors');
+
+        errDiv.classList.add('d-none');
+        btn.disabled = true;
+
+        const payload = {
+            reason: reason,
+            description: desc
+        };
+
+        if (targetType === 'location') payload.location = targetId;
+        if (targetType === 'comment') payload.comment = targetId;
+
+        try {
+            const response = await fetch('/api/reports/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Wystąpił błąd podczas wysyłania zgłoszenia.');
+
+            const modalEl = document.getElementById('reportModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            const toastElement = document.getElementById('successToast');
+            if (toastElement) {
+                document.getElementById('successMessage').textContent = 'Zgłoszenie zostało wysłane do moderacji.';
+                new bootstrap.Toast(toastElement).show();
+            } else {
+                alert('Zgłoszenie zostało wysłane do moderacji.');
+            }
+        } catch (e) {
+            errDiv.textContent = e.message;
+            errDiv.classList.remove('d-none');
+        } finally {
+            btn.disabled = false;
         }
     }
 
