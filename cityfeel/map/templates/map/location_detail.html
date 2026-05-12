@@ -162,6 +162,30 @@
                     </div>
                 </div>
                 <div class="mt-2"><p class="mb-0">"{{ comment.content }}"</p></div>
+                {% if comment.sentiment_label %}
+                <div class="mt-1 d-flex align-items-center gap-2">
+                    {% if comment.sentiment_label == 'positive' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                        <i class="bi bi-emoji-smile"></i> Pozytywny
+                    </span>
+                    {% elif comment.sentiment_label == 'neutral' %}
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                        <i class="bi bi-emoji-neutral"></i> Neutralny
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                        <i class="bi bi-emoji-frown"></i> Negatywny
+                    </span>
+                    {% endif %}
+                    {% if comment.emotion_point and comment.sentiment_score %}
+                    {% if comment.sentiment_score < 2.5 and comment.emotion_point.emotional_value > 3 or comment.sentiment_score > 3.5 and comment.emotion_point.emotional_value < 3 %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle" title="Sentyment tekstu nie zgadza się z wystawioną oceną">
+                        <i class="bi bi-exclamation-triangle"></i> Niezgodność
+                    </span>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
         {% empty %}
@@ -182,14 +206,17 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Ocena (1-5)</label>
-                        <select name="emotional_value" id="id_emotional_value" class="form-select" required>
-                            <option value="" disabled selected>Wybierz...</option>
+                        <select name="emotional_value" id="id_emotional_value" class="form-select">
+                            <option value="" selected>Auto (z komentarza)</option>
                             <option value="5">5 - Super</option>
                             <option value="4">4 - Dobrze</option>
                             <option value="3">3 - Średnio</option>
                             <option value="2">2 - Słabo</option>
                             <option value="1">1 - Tragicznie</option>
                         </select>
+                        <div class="form-text" id="sentiment-hint">
+                            <i class="bi bi-stars"></i> Jeśli zostawisz "Auto", ocena zostanie obliczona automatycznie z treści komentarza.
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Prywatność oceny</label>

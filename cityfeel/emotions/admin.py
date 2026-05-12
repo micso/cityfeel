@@ -39,17 +39,19 @@ class EmotionPointAdmin(admin.ModelAdmin):
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     """Admin interface for Comment."""
-    # [ZMIANA] emotion_point -> location
-    list_display = ['user', 'location', 'created_at', 'short_content']
-    list_filter = ['created_at', 'user', 'location']
+    list_display = ['user', 'location', 'created_at', 'short_content', 'sentiment_badge', 'mismatch_warning']
+    list_filter = ['created_at', 'sentiment_label', 'location']
     search_fields = ['user__username', 'content', 'location__name']
-    readonly_fields = ['created_at']
+    readonly_fields = ['created_at', 'sentiment_score', 'sentiment_label']
     autocomplete_fields = ['user', 'location']
     date_hierarchy = 'created_at'
 
     fieldsets = (
         ('Komentarz', {
             'fields': ('user', 'location', 'content')
+        }),
+        ('Sentyment', {
+            'fields': ('sentiment_score', 'sentiment_label'),
         }),
         ('Metadata', {
             'fields': ('created_at',),
@@ -58,15 +60,40 @@ class CommentAdmin(admin.ModelAdmin):
     )
 
     def short_content(self, obj):
-        """Wyświetla skrót komentarza na liście."""
         return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
-
     short_content.short_description = "Treść"
 
+    def sentiment_badge(self, obj):
+        colors = {'positive': '#198754', 'neutral': '#6c757d', 'negative': '#dc3545'}
+        labels = {'positive': 'Pozytywny', 'neutral': 'Neutralny', 'negative': 'Negatywny'}
+        if obj.sentiment_label:
+            color = colors.get(obj.sentiment_label, '#6c757d')
+            label = labels.get(obj.sentiment_label, obj.sentiment_label)
+            score = f" ({obj.sentiment_score:.0f}/5)" if obj.sentiment_score else ""
+            return format_html(
+                '<span style="color:{};font-weight:bold">{}{}</span>', color, label, score
+            )
+        return format_html('<span style="color:#aaa">–</span>')
+    sentiment_badge.short_description = "Sentyment"
+
+    def mismatch_warning(self, obj):
+        if obj.sentiment_score is None or obj.emotion_point_id is None:
+            return ""
+        try:
+            diff = abs(obj.sentiment_score - obj.emotion_point.emotional_value)
+            if diff > 1.5:
+                return format_html(
+                    '<span style="color:#dc3545" title="Sentyment ({}) rozjeżdża się z oceną ({})">&#9888; Niezgodność</span>',
+                    obj.sentiment_score, obj.emotion_point.emotional_value
+                )
+        except Exception:
+            pass
+        return ""
+    mismatch_warning.short_description = "Spójność"
+
     def get_queryset(self, request):
-        """Optimize queries with select_related."""
         qs = super().get_queryset(request)
-        return qs.select_related('user', 'location')
+        return qs.select_related('user', 'location', 'emotion_point')
 
 
 @admin.register(Photo)

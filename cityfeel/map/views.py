@@ -8,6 +8,7 @@ from django.contrib import messages
 
 from emotions.models import EmotionPoint, Photo, Comment
 from emotions.forms import PhotoForm
+from emotions import sentiment as sentiment_service
 from map.models import Location
 
 
@@ -121,6 +122,13 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         privacy_status = request.POST.get('privacy_status', 'public')
         comment_content = request.POST.get('comment')
         comment_privacy = request.POST.get('comment_privacy_status', privacy_status)
+
+        # Jeśli brak oceny, a jest komentarz — oblicz automatycznie z sentymentu
+        if not emotional_value and comment_content and comment_content.strip():
+            result = sentiment_service.analyze(comment_content.strip())
+            if result['score'] is not None:
+                emotional_value = str(round(result['score']))
+                messages.info(request, f'Ocena obliczona automatycznie z treści komentarza: {emotional_value}/5')
 
         # A. SCENARIUSZ: Dodanie nowej Oceny (z opcjonalnym komentarzem).
         # Model jest historyczny: każdy klik = nowy EmotionPoint z własnym created_at.

@@ -130,6 +130,24 @@ class Comment(models.Model):
         help_text="Treść komentarza"
     )
 
+    SENTIMENT_CHOICES = [
+        ('negative', 'Negatywny'),
+        ('neutral', 'Neutralny'),
+        ('positive', 'Pozytywny'),
+    ]
+
+    sentiment_score = models.FloatField(
+        null=True, blank=True,
+        help_text="Wynik sentymentu (1.0–5.0, ta sama skala co emotional_value)"
+    )
+
+    sentiment_label = models.CharField(
+        max_length=10,
+        choices=SENTIMENT_CHOICES,
+        null=True, blank=True,
+        help_text="Etykieta sentymentu: negative/neutral/positive"
+    )
+
     # [WAŻNE] Pole prywatności komentarza
     privacy_status = models.CharField(
         max_length=10,

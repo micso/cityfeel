@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema_field
 from django.db.models import Q
 
 from emotions.models import EmotionPoint, Comment, Report
+from emotions import sentiment as sentiment_service
 from map.models import Location
 from auth.models import Friendship, CFUser
 
@@ -232,10 +233,10 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
         extra_kwargs = {
             'emotional_value': {
+                'required': False,
                 'error_messages': {
                     'min_value': 'Wartość emocjonalna musi być w zakresie 1-5.',
                     'max_value': 'Wartość emocjonalna musi być w zakresie 1-5.',
-                    'required': 'Pole emotional_value jest wymagane.',
                     'invalid': 'Nieprawidłowy format wartości emocjonalnej.',
                 }
             },
@@ -245,6 +246,23 @@ class EmotionPointSerializer(serializers.ModelSerializer):
                 }
             }
         }
+
+    def validate(self, attrs):
+        emotional_value = attrs.get('emotional_value')
+        comment = attrs.get('comment', '').strip()
+        if not emotional_value and not comment:
+            raise serializers.ValidationError(
+                'Podaj ocenę lub komentarz — przynajmniej jedno jest wymagane.'
+            )
+        if not emotional_value and comment:
+            result = sentiment_service.analyze(comment)
+            if result['score'] is not None:
+                attrs['emotional_value'] = round(result['score'])
+            else:
+                raise serializers.ValidationError(
+                    'Nie udało się automatycznie obliczyć oceny z komentarza. Wybierz ocenę ręcznie.'
+                )
+        return attrs
 
     def create(self, validated_data):
         """

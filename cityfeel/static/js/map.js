@@ -568,9 +568,10 @@
         const locationNameInput = document.getElementById('locationName');
         const locationNameContainer = document.getElementById('locationNameContainer');
         const commentInput = document.getElementById('emotionComment');
+        const commentText = commentInput ? commentInput.value.trim() : '';
 
-        if (!emotionalValue) {
-            showEmotionError('Musisz wybrać ocenę (kliknij na gwiazdki).');
+        if (!emotionalValue && !commentText) {
+            showEmotionError('Wybierz ocenę lub napisz komentarz — przynajmniej jedno jest wymagane.');
             return;
         }
 
@@ -594,10 +595,13 @@
 
         const payload = {
             location: locationData,
-            emotional_value: parseInt(emotionalValue.value, 10),
             privacy_status: privacyStatus,
-            comment: commentInput ? commentInput.value.trim() : ''
+            comment: commentText
         };
+
+        if (emotionalValue) {
+            payload.emotional_value = parseInt(emotionalValue.value, 10);
+        }
 
         try {
             const csrfToken = getCsrfToken();
