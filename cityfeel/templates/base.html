@@ -40,7 +40,16 @@
                         </a>
                     </li>
                     {% endif %}
-
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'emotions:city_dashboard' %}">
+                            <i class="bi bi-bar-chart-fill"></i> Statystyki Miasta
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold" href="{% url 'map:location_list' %}">
+                            <i class="bi bi-card-list"></i> Lista Ocen
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'cf_auth:community' %}">Społeczność</a>
                     </li>
@@ -97,9 +106,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
     {% block extra_js %}{% endblock %}

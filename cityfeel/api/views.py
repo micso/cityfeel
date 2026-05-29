@@ -1,18 +1,17 @@
-# cityfeel/api/views.py
-
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet, GenericViewSet
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q, Avg, Count
+from django.db.models import Q, Avg, Count, Max, F
 from django.db.models.functions import TruncHour, TruncDay, TruncWeek, TruncMonth
 from django.utils.dateparse import parse_datetime
+from django.core.cache import cache
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
+from django.contrib.gis.db.models.functions import Distance
 
-
-# Mapowanie parametru ?bucket=... na funkcję truncującą (PostgreSQL date_trunc).
-# Używane przez endpointy histogram i timeline.
 BUCKET_TRUNC = {
     'hour': TruncHour,
     'day': TruncDay,
@@ -40,18 +39,6 @@ from .aggregation import (
 
 
 class EmotionPointViewSet(ModelViewSet):
-    """
-    ViewSet dla endpointu /api/emotion-points/.
-    
-    GET (lista): Zwraca tylko publiczne EmotionPoints (dla widoków profilowych itp.)
-    POST/PUT/PATCH: Tworzy/aktualizuje EmotionPoints (publiczne i prywatne)
-    
-    Uwaga: Wszystkie EmotionPoints (publiczne i prywatne) są uwzględniane w statystykach
-    lokalizacji w LocationViewSet. Różnica polega tylko na tym czy pokazujemy autora.
-    
-    Filtrowanie:
-    - ?emotional_value=1,2,3 - filtrowanie po wielu wartościach emocjonalnych
-    """
     queryset = EmotionPoint.objects.filter(privacy_status='public').order_by('-created_at')
     serializer_class = EmotionPointSerializer
     permission_classes = [IsAuthenticated]
@@ -60,29 +47,18 @@ class EmotionPointViewSet(ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='histogram')
     def histogram(self, request):
-        """
-        Zwraca histogram aktywności emocji w czasie — dane do paska histogramu
-        pod mapą oraz do animacji "play".
+        query_string = request.META.get('QUERY_STRING', '')
+        cache_key = f"hist_data_{hash(query_string)}"
 
-        Endpoint: ``GET /api/emotion-points/histogram/``
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
 
-        Query params (kompozycja AND z filtrami EmotionPointFilter):
-            ``bucket``: ``hour`` | ``day`` (default) | ``week`` | ``month``
-            ``bbox``, ``emotional_value``, ``created_after``, ``created_before``
-
-        Zwraca listę kubełków posortowaną chronologicznie:
-            ``[{"bucket": "2025-12-31T00:00:00Z", "count": 42, "avg_value": 3.7}, ...]``
-        """
         bucket_name = request.query_params.get('bucket', DEFAULT_BUCKET)
         trunc = BUCKET_TRUNC.get(bucket_name)
         if trunc is None:
-            return Response(
-                {'detail': f"Niepoprawny bucket. Dozwolone: {sorted(BUCKET_TRUNC)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({'detail': f"Niepoprawny bucket."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Histogram budujemy ze WSZYSTKICH wpisów (public+private) — public/private
-        # wpływa tylko na widoczność autora, nie na statystyki.
         base_qs = EmotionPoint.objects.all()
         filtered = self.filterset_class(request.query_params, queryset=base_qs).qs
 
@@ -94,83 +70,119 @@ class EmotionPointViewSet(ModelViewSet):
             .order_by('bucket')
         )
 
-        return Response([
+        response_data = [
             {
                 'bucket': b['bucket'].isoformat() if b['bucket'] else None,
                 'count': b['count'],
                 'avg_value': float(b['avg_value']) if b['avg_value'] is not None else None,
             }
             for b in buckets
-        ])
+        ]
+
+        cache.set(cache_key, response_data, 300)
+        return Response(response_data)
 
 
 class LocationViewSet(ReadOnlyModelViewSet):
-    """
-    ViewSet dla endpointu /api/locations/ (READ-ONLY).
-
-    Zwraca lokalizacje z agregowaną średnią wartością emocjonalną (``avg_emotional_value``).
-    Model EmotionPoint jest historyczny — średnia liczona w jednym z dwóch trybów:
-
-    - **Tryb A (stan bieżący)** — używany domyślnie. Średnia z najnowszych głosów każdego usera
-      (DISTINCT ON (user_id) ORDER BY created_at DESC).
-    - **Tryb B (w oknie czasu)** — gdy podano ``?created_after`` i/lub ``?created_before``.
-      Mean-of-means: każdy user ma jedną wagę w oknie niezależnie od liczby wpisów.
-
-    Filtrowanie (kompozycja AND):
-    - ``?name=Gdańsk`` — filtrowanie po nazwie (icontains)
-    - ``?lat=54.35&lon=18.64&radius=1000`` — filtrowanie po promieniu (metry)
-    - ``?bbox=18.5,54.3,18.7,54.4`` — filtrowanie po bounding box
-    - ``?emotional_value=1,2,3`` — filtrowanie po średniej (po agregacji)
-    - ``?created_after=2025-12-31T00:00:00Z&created_before=2026-01-01T00:00:00Z`` — okno czasu
-    """
     serializer_class = LocationListSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = LocationFilter
-    pagination_class = None  # Wyłącz paginację - wszystkie lokalizacje w bounding box
+    pagination_class = None
 
     def get_queryset(self):
-        # Tryb agregacji wybierany na podstawie obecności filtra czasu w query params.
-        # Walidację formatu zostawiamy IsoDateTimeFilter w EmotionPointFilter (gdy będzie
-        # propagowany), tu tylko parsujemy do datetime; niepoprawne wartości → tryb A.
         request = self.request
+        base = Location.objects.all()
+
+        # 1. Bounding Box (Cięcie ekranu)
+        bbox_param = request.query_params.get('bbox')
+        if bbox_param:
+            try:
+                min_lon, min_lat, max_lon, max_lat = map(float, bbox_param.split(','))
+                from django.contrib.gis.geos import Polygon
+                bbox_polygon = Polygon.from_bbox((min_lon, min_lat, max_lon, max_lat))
+                base = base.filter(coordinates__contained=bbox_polygon)
+            except (ValueError, TypeError):
+                pass
+
+        # 2. Sprawdzamy czas ZANIM wyciągniemy TOP 100
         ca = parse_datetime(request.query_params.get('created_after', '') or '') if request else None
         cb = parse_datetime(request.query_params.get('created_before', '') or '') if request else None
 
-        base = Location.objects.all().distinct()
         if ca and cb:
-            qs = annotate_windowed_mean_of_means_avg(base, ca, cb)
-        else:
-            qs = annotate_latest_per_user_avg(base)
+            # Włączony filtr czasu:
+            # Wyszukujemy miejsca aktywne TYLKO w tym oknie czasowym
+            time_filter = Q(emotion_points__created_at__gte=ca) & Q(emotion_points__created_at__lte=cb)
 
-        return qs.order_by('-avg_emotional_value', 'name')
+            fast_ids = list(
+                base.filter(time_filter)  # Odrzucamy miejsca "z przyszłości" i martwe w tym czasie
+                .annotate(last_activity=Max('emotion_points__created_at', filter=time_filter))
+                .order_by(F('last_activity').desc(nulls_last=True))
+                .values_list('id', flat=True)[:100]
+            )
+        else:
+            # Domyślnie (Brak filtra): 100 najświeższych punktów z całego życia aplikacji
+            fast_ids = list(
+                base.annotate(last_activity=Max('emotion_points__created_at'))
+                .order_by(F('last_activity').desc(nulls_last=True))
+                .values_list('id', flat=True)[:100]
+            )
+
+        # 3. Zasilamy znalezioną historyczną setkę dokładnymi statystykami
+        qs = Location.objects.filter(id__in=fast_ids)
+
+        if ca and cb:
+            qs = annotate_windowed_mean_of_means_avg(qs, ca, cb)
+        else:
+            qs = annotate_latest_per_user_avg(qs)
+
+        return qs
+
+    @action(detail=False, methods=['get'], url_path='nearby')
+    def nearby(self, request):
+        """
+        Zwraca WSZYSTKIE punkty w małym Bounding Boxie jako listę.
+        Obliczanie dokładnej odległości i wybór najbliższego
+        przenosimy do JavaScriptu, co gwarantuje 100% dokładności.
+        """
+        lat = request.query_params.get('lat')
+        lon = request.query_params.get('lon')
+        radius = request.query_params.get('radius', 50)
+
+        if not lat or not lon:
+            return Response({'detail': 'Brak współrzędnych.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            deg = float(radius) / 111320.0
+            min_lon, max_lon = float(lon) - deg, float(lon) + deg
+            min_lat, max_lat = float(lat) - deg, float(lat) + deg
+
+            from django.contrib.gis.geos import Polygon
+            bbox_polygon = Polygon.from_bbox((min_lon, min_lat, max_lon, max_lat))
+
+            locations = Location.objects.filter(coordinates__contained=bbox_polygon)
+
+            data = []
+            for loc in locations:
+                data.append({
+                    'id': loc.id,
+                    'name': loc.name,
+                    'lat': loc.coordinates.y,
+                    'lon': loc.coordinates.x
+                })
+
+            return Response(data)
+
+        except Exception as e:
+            print(f"Błąd wyszukiwania pobliskich punktów: {e}")
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'], url_path='emotion-timeline')
     def emotion_timeline(self, request, pk=None):
-        """
-        Zwraca timeline emocji dla konkretnej lokalizacji — dane do mini-wykresu
-        w popupie markera.
-
-        Endpoint: ``GET /api/locations/{id}/emotion-timeline/``
-
-        Query params:
-            ``bucket``: ``hour`` | ``day`` (default) | ``week`` | ``month``
-            ``created_after``, ``created_before``: opcjonalne ograniczenie zakresu
-
-        Zwraca listę chronologiczną:
-            ``[{"bucket": "2025-12-31T00:00:00Z", "avg_value": 3.7, "count": 12}, ...]``
-
-        Uwaga: tu używamy prostej średniej (mean of all entries in bucket), nie
-        mean-of-means — bucket jest na tyle wąski, że pojedynczy user rzadko ma
-        w nim wiele wpisów. Dla wykresu trendu prostota czytelności wygrywa.
-        """
         bucket_name = request.query_params.get('bucket', DEFAULT_BUCKET)
         trunc = BUCKET_TRUNC.get(bucket_name)
         if trunc is None:
-            return Response(
-                {'detail': f"Niepoprawny bucket. Dozwolone: {sorted(BUCKET_TRUNC)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({'detail': f"Niepoprawny bucket."}, status=status.HTTP_400_BAD_REQUEST)
 
         qs = EmotionPoint.objects.filter(location_id=pk)
 
@@ -199,25 +211,12 @@ class LocationViewSet(ReadOnlyModelViewSet):
         ])
 
 
-class FriendshipViewSet(mixins.CreateModelMixin,
-                        mixins.RetrieveModelMixin,
-                        mixins.DestroyModelMixin,
-                        mixins.UpdateModelMixin,
-                        GenericViewSet):
-    """
-    ViewSet dla systemu znajomych.
-    
-    POST /api/friendship/ - Wyślij zaproszenie (wymaga friend_id)
-    PATCH /api/friendship/{id}/ - Akceptuj zaproszenie (body: {"status": "accepted"})
-    DELETE /api/friendship/{id}/ - Odrzuć zaproszenie / Usuń znajomego
-    GET /api/friends/ - (Action) Lista znajomych
-    GET /api/friendship/requests/ - (Action) Lista oczekujących zaproszeń (otrzymanych)
-    """
+class FriendshipViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+                        mixins.UpdateModelMixin, GenericViewSet):
     serializer_class = FriendshipSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Zwraca relacje, w których uczestniczy zalogowany użytkownik."""
         user = self.request.user
         return Friendship.objects.filter(Q(user=user) | Q(friend=user))
 
@@ -226,39 +225,20 @@ class FriendshipViewSet(mixins.CreateModelMixin,
 
     @action(detail=False, methods=['get'], url_path='requests')
     def requests_list(self, request):
-        """
-        Zwraca listę otrzymanych, oczekujących zaproszeń.
-        Endpoint: /api/friendship/requests/
-        """
-        incoming_requests = Friendship.objects.filter(
-            friend=request.user,
-            status=Friendship.PENDING
-        ).order_by('-created_at')
-
+        incoming_requests = Friendship.objects.filter(friend=request.user, status=Friendship.PENDING).order_by(
+            '-created_at')
         serializer = self.get_serializer(incoming_requests, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='friends')
     def friends_list(self, request):
-        """
-        Zwraca listę znajomych (status ACCEPTED).
-        Zwraca dane użytkowników, a nie obiekty Friendship.
-        Endpoint: /api/friends/ (mapowane w urls.py)
-        """
         user = request.user
-
-        # Pobierz wszystkie zaakceptowane relacje
         friendships = Friendship.objects.filter(
-            (Q(user=user) | Q(friend=user)) & Q(status=Friendship.ACCEPTED)
-        ).select_related('user', 'friend')
-
+            (Q(user=user) | Q(friend=user)) & Q(status=Friendship.ACCEPTED)).select_related('user', 'friend')
         friends_data = []
         for f in friendships:
-            # Wybierz "drugą stronę" relacji
             is_sender = f.user == user
             friend_user = f.friend if is_sender else f.user
-
-            # Przygotuj dane do serializacji
             friend_user.friendship_id = f.id
             friend_user.friendship_since = f.created_at
             friends_data.append(friend_user)
@@ -268,21 +248,11 @@ class FriendshipViewSet(mixins.CreateModelMixin,
 
 
 class CommentViewSet(mixins.CreateModelMixin, GenericViewSet):
-    """
-    ViewSet dla komentarzy.
-    Obsługuje tylko tworzenie (POST).
-    Endpoint: /api/comments/
-    """
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
     queryset = Comment.objects.all()
 
     def create(self, request, *args, **kwargs):
-        """
-        Dodaje nowy komentarz do punktu emocji.
-        Wymaga: content, point_id.
-        Automatycznie przypisuje zalogowanego użytkownika.
-        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

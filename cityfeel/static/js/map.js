@@ -68,6 +68,7 @@
     let addEmotionModal = null;
     let isUserAuthenticated = false;
     let selectedCoordinates = null;
+    let closestLocationData = null; // DODANA ZMIENNA
     let proximityRadius = 50;
     let emotionPointsUrl = '/api/emotion-points/';
 
@@ -490,39 +491,104 @@
         modalElement.addEventListener('hidden.bs.modal', resetEmotionForm);
     }
 
-    function handleMapClick(e) {
+    async function handleMapClick(e) {
         const { lat, lng } = e.latlng;
         selectedCoordinates = { latitude: lat, longitude: lng };
         document.getElementById('coordinatesDisplay').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        checkProximityAndShowInfo(lat, lng);
+
+        // Pokaż okienko od razu, by aplikacja wydawała się responsywna
         addEmotionModal.show();
+
+        // Czekaj na odpowiedź z serwera (szukanie we WSZYSTKICH punktach bazy)
+        await checkProximityViaAPI(lat, lng);
     }
 
-    function checkProximityAndShowInfo(lat, lng) {
-        const proximityInfo = document.getElementById('proximityInfo');
+    async function checkProximityViaAPI(lat, lng) {
+        const proximityAlert = document.getElementById('proximityAlert');
         const proximityText = document.getElementById('proximityText');
+        const proximityChoices = document.getElementById('proximityChoices');
         const locationNameContainer = document.getElementById('locationNameContainer');
+        const choiceExisting = document.getElementById('choiceExisting');
+        const choiceNew = document.getElementById('choiceNew');
 
-        let closestLocation = null;
-        let minDistance = Infinity;
+        proximityText.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Szukanie punktów w pobliżu...';
+        proximityAlert.classList.remove('d-none', 'alert-warning', 'alert-info');
+        proximityAlert.classList.add('alert-secondary');
+        proximityChoices.classList.add('d-none');
 
+        let allCandidates = [];
+
+        // 1. Zbieramy punkty, które aktualnie WIDAĆ na mapie
         currentLocationsData.forEach(loc => {
-            const dist = map.distance([lat, lng], [loc.coordinates.latitude, loc.coordinates.longitude]);
+            allCandidates.push({
+                id: loc.id,
+                name: loc.name,
+                lat: loc.coordinates.latitude,
+                lon: loc.coordinates.longitude
+            });
+        });
+
+        // 2. Pobieramy ukryte punkty z API (bazy danych)
+        try {
+            const response = await fetch(`/api/locations/nearby/?lat=${lat}&lon=${lng}&radius=${proximityRadius}`);
+            if (response.ok) {
+                const hiddenPoints = await response.json();
+                if (Array.isArray(hiddenPoints)) {
+                    hiddenPoints.forEach(hp => {
+                        // Unikamy dodawania punktu podwójnie (jeśli już jest na ekranie)
+                        if (!allCandidates.find(c => c.id === hp.id)) {
+                            allCandidates.push(hp);
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Błąd sieci przy szukaniu ukrytych lokalizacji", error);
+        }
+
+        // 3. Obliczamy DOKŁADNĄ odległość w metrach dla WSZYSTKICH punktów
+        let minDistance = Infinity;
+        closestLocationData = null;
+
+        allCandidates.forEach(loc => {
+            // Leaflet świetnie mierzy metry!
+            const dist = map.distance([lat, lng], [loc.lat, loc.lon]);
             if (dist < proximityRadius && dist < minDistance) {
                 minDistance = dist;
-                closestLocation = loc;
+                closestLocationData = loc;
+                closestLocationData.distance = dist; // Zapisujemy metry, żeby nie było NaN
             }
         });
 
-        if (closestLocation) {
-            proximityText.textContent = `Twoja ocena zostanie przypisana do: "${closestLocation.name}" (${Math.round(minDistance)}m od kliknięcia)`;
-            proximityInfo.classList.remove('d-none');
-            proximityInfo.classList.add('alert-info');
+        // 4. Pokazujemy wynik użytkownikowi
+        // 4. Pokazujemy wynik użytkownikowi
+        if (closestLocationData) {
+            // SPRAWDZAMY CZY PUNKT JEST WIDOCZNY NA EKRANIE
+            const isVisibleOnMap = currentLocationsData.some(loc => loc.id === closestLocationData.id);
+
+            if (isVisibleOnMap) {
+                proximityText.innerHTML = `W pobliżu wykryto: <strong>"${closestLocationData.name}"</strong> (${Math.round(closestLocationData.distance)}m stąd).`;
+            } else {
+                proximityText.innerHTML = `W pobliżu wykryto ukryty punkt: <strong>"${closestLocationData.name}"</strong> (${Math.round(closestLocationData.distance)}m stąd).`;
+            }
+
+            proximityAlert.classList.remove('alert-secondary', 'alert-warning');
+            proximityAlert.classList.add('alert-info');
+            proximityChoices.classList.remove('d-none');
+
+            choiceExisting.checked = true;
             locationNameContainer.classList.add('d-none');
+
+            choiceExisting.onchange = () => locationNameContainer.classList.add('d-none');
+            choiceNew.onchange = () => locationNameContainer.classList.remove('d-none');
+
         } else {
-            proximityText.textContent = 'Utworzysz nową lokalizację w tym miejscu';
-            proximityInfo.classList.remove('d-none');
-            proximityInfo.classList.add('alert-warning');
+            proximityText.textContent = 'Utworzysz nową lokalizację w tym miejscu.';
+            proximityAlert.classList.remove('alert-secondary', 'alert-info');
+            proximityAlert.classList.add('alert-warning');
+            proximityChoices.classList.add('d-none');
+
+            choiceNew.checked = true;
             locationNameContainer.classList.remove('d-none');
         }
     }
@@ -562,16 +628,25 @@
         });
     }
 
-    async function handleEmotionSubmit() {
+   async function handleEmotionSubmit() {
         const emotionalValue = document.querySelector('input[name="emotional_value"]:checked');
         const privacyStatus = document.getElementById('privacyStatus').value;
         const locationNameInput = document.getElementById('locationName');
-        const locationNameContainer = document.getElementById('locationNameContainer');
         const commentInput = document.getElementById('emotionComment');
+        const choiceNew = document.getElementById('choiceNew');
+
+        const isNewLocation = choiceNew && choiceNew.checked;
 
         if (!emotionalValue) {
             showEmotionError('Musisz wybrać ocenę (kliknij na gwiazdki).');
             return;
+        }
+
+        if (isNewLocation || !closestLocationData) {
+            if (!locationNameInput.value.trim()) {
+                showEmotionError('Musisz podać nazwę dla nowej lokalizacji.');
+                return;
+            }
         }
 
         hideEmotionErrors();
@@ -583,13 +658,23 @@
         submitText.classList.add('d-none');
         submitSpinner.classList.remove('d-none');
 
-        const locationData = {
-            coordinates: { latitude: selectedCoordinates.latitude, longitude: selectedCoordinates.longitude }
-        };
-
-        if (!locationNameContainer.classList.contains('d-none')) {
-            const locationName = locationNameInput.value.trim();
-            if (locationName) locationData.name = locationName;
+        let locationData = {};
+        if (isNewLocation || !closestLocationData) {
+            // ZUPEŁNIE NOWE MIEJSCE: Wysyłamy wymyśloną nazwę i kliknięte współrzędne
+            locationData = {
+                name: locationNameInput.value.trim(),
+                coordinates: { latitude: selectedCoordinates.latitude, longitude: selectedCoordinates.longitude }
+            };
+        } else {
+            // PRZYPIĘCIE DO STAREGO (Ukrytego):
+            // Wysyłamy ID oraz DOKŁADNE współrzędne istniejącego punktu z bazy (a nie z myszki)
+            locationData = {
+                id: closestLocationData.id,
+                coordinates: {
+                    latitude: closestLocationData.lat,
+                    longitude: closestLocationData.lon
+                }
+            };
         }
 
         const payload = {
@@ -673,6 +758,10 @@
         const comment = document.getElementById('emotionComment');
         if (comment) comment.value = '';
         hideEmotionErrors();
+        document.getElementById('proximityAlert').classList.add('d-none');
+        document.getElementById('proximityChoices').classList.add('d-none');
+        document.getElementById('choiceExisting').checked = true;
+        closestLocationData = null;
         document.getElementById('proximityInfo').classList.add('d-none');
         selectedCoordinates = null;
         document.getElementById('coordinatesDisplay').textContent = '-';
@@ -903,7 +992,23 @@
         });
 
         playBtn.addEventListener('click', toggleAnimation);
+// NOWOŚĆ: Obsługa kalendarza "Wehikuł czasu"
+        const exactPicker = document.getElementById('exactTimePicker');
+        if (exactPicker) {
+            exactPicker.addEventListener('change', (e) => {
+                const pickedDate = new Date(e.target.value);
+                if (isNaN(pickedDate.getTime())) return;
 
+                // Tworzymy wąskie okno czasowe (np. +/- 12 godzin wokół wybranej daty)
+                // aby wyłapać nastroje z tamtego konkretnego momentu w historii.
+                const centerMs = pickedDate.getTime();
+                const halfWindow = 12 * 3600 * 1000;
+
+                // Przestawiamy suwak, co automatycznie odświeży mapę i wczyta starą historię!
+                timeFilter.slider.set([centerMs - halfWindow, centerMs + halfWindow]);
+                clearActivePreset();
+            });
+        }
         map.on('moveend', debounceTimeHistogram);
         setTimeout(loadTimeHistogram, 400);
     }
