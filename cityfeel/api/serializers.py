@@ -251,9 +251,9 @@ class EmotionPointSerializer(serializers.ModelSerializer):
         emotional_value = attrs.get('emotional_value')
         comment = attrs.get('comment', '').strip()
         if not emotional_value and not comment:
-            raise serializers.ValidationError(
-                'Podaj ocenę lub komentarz — przynajmniej jedno jest wymagane.'
-            )
+            raise serializers.ValidationError({
+                'emotional_value': 'Podaj ocenę lub komentarz — przynajmniej jedno jest wymagane.'
+            })
         if not emotional_value and comment:
             result = sentiment_service.analyze(comment)
             if result['score'] is not None:
