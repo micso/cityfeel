@@ -147,13 +147,29 @@ class LocationAvgAggregationTestCase(TestCase):
         self.assertAlmostEqual(float(avg), (7 / 3 + 3) / 2, places=2)
 
     def test_mode_b_excludes_entries_outside_window(self):
-        """Okno daleko poza danymi → brak wpisów → avg = None."""
+        """Okno daleko poza danymi → punkt zostaje całkowicie odfiltrowany i znika z mapy."""
         q = (
             '?created_after=2030-01-01T00:00:00Z'
             '&created_before=2030-01-31T23:59:59Z'
         )
-        avg = self._get_avg(q)
-        self.assertIsNone(avg)
+
+        # --- NOWA LOGIKA (Aktualna) ---
+        # Oczekujemy, że funkcja _get_avg rzuci StopIteration, bo lokalizacja
+        # wyparowała z wyników API z powodu braku aktywności w tym oknie czasowym.
+        with self.assertRaises(StopIteration):
+            self._get_avg(q)
+
+        """
+        # --- STARA LOGIKA (Kopia Zapasowa) ---
+        # Jeśli kierownik zdecyduje, że martwe punkty mają jednak wisieć na mapie (ze średnią None),
+        # musisz usunąć powyższy blok "with self.assertRaises..." i odkomentować te dwie linijki:
+        #
+        # avg = self._get_avg(q)
+        # self.assertIsNone(avg)
+        # 
+        # UWAGA: Aby stara logika testu znów działała na zielono, musisz też usunąć 
+        # ".filter(time_filter)" przy definicji "fast_ids" w pliku api/views.py!
+        """
 
 
 class HistogramEndpointTestCase(TestCase):
