@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard Statystyk Miasta{% endblock %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <h1 style="margin-bottom: 0;">Dashboard Statystyk</h1>
+
+        <form method="GET" class="d-flex flex-wrap align-items-center gap-3 mt-3 mt-md-0 p-3 bg-white rounded shadow-sm border border-primary border-opacity-25">
+
+            <div class="d-flex align-items-center gap-2">
+                <label for="yearSelect" class="fw-bold text-muted mb-0"><i class="bi bi-calendar-event me-1"></i> Rok:</label>
+                <select id="yearSelect" name="year" class="form-select form-select-sm border-primary fw-bold" style="min-width: 100px; cursor: pointer;" onchange="this.form.submit()">
+                    {% for y in available_years %}
+                        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="vr d-none d-md-block" style="width: 2px; background-color: #dee2e6;"></div>
+
+            <div class="d-flex align-items-center gap-2">
+                <label for="weekSelect" class="fw-bold text-muted mb-0"><i class="bi bi-calendar-week me-1"></i> Tydzień:</label>
+                <select id="weekSelect" name="week_num" class="form-select form-select-sm border-primary fw-bold" style="min-width: 250px; cursor: pointer;" onchange="this.form.submit()">
+                    {% for w in available_weeks %}
+                        <option value="{{ w.num }}" {% if w.num == week %}selected{% endif %}>{{ w.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </form>
+    </div>
+
+    <p class="text-muted mb-4 fs-5">Analiza wskazuje na tydzień: <strong class="text-dark">{{ week_display }}</strong></p>
+
+    <div class="row mb-4 g-4">
+        <div class="col-md-6">
+            <div class="highlight-card h-100 position-relative overflow-hidden" style="background: #fff; padding: 25px; border-radius: 12px; border-bottom: 5px solid #ef4444; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <i class="bi bi-cloud-rain-fill position-absolute" style="right: 20px; top: 20px; font-size: 3rem; color: #ef4444; opacity: 0.15;"></i>
+                <h4 style="margin-top: 0; color: #64748b; font-weight: 600;">Najsmutniejszy czas</h4>
+                {% if saddest_info %}
+                    <p style="font-size: 1.3rem; color: #1e293b; margin: 20px 0; line-height: 1.5;">
+                        <span class="text-capitalize fw-bold">{{ saddest_info.day }}</span>, godz. <strong class="text-danger">{{ saddest_info.hour }}:00 - {{ saddest_info.hour|add:"1" }}:00</strong>.
+                    </p>
+                    <p style="color: #64748b; margin-bottom: 0; font-size: 1rem;">
+                        Średnia: <strong class="text-danger fs-5">{{ saddest_info.avg }}</strong> / 5.0 <br>
+                        <small class="text-muted">(Wyliczone na podstawie {{ saddest_info.count }} ocen)</small>
+                    </p>
+                {% else %}
+                    <p style="color: #94a3b8; margin-top: 25px; font-style: italic;">Brak opinii w tym tygodniu.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="highlight-card h-100 position-relative overflow-hidden" style="background: #fff; padding: 25px; border-radius: 12px; border-bottom: 5px solid #10b981; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <i class="bi bi-sun-fill position-absolute" style="right: 20px; top: 20px; font-size: 3rem; color: #10b981; opacity: 0.15;"></i>
+                <h4 style="margin-top: 0; color: #64748b; font-weight: 600;">Najweselszy czas</h4>
+                {% if happiest_info %}
+                    <p style="font-size: 1.3rem; color: #1e293b; margin: 20px 0; line-height: 1.5;">
+                        <span class="text-capitalize fw-bold">{{ happiest_info.day }}</span>, godz. <strong class="text-success">{{ happiest_info.hour }}:00 - {{ happiest_info.hour|add:"1" }}:00</strong>.
+                    </p>
+                    <p style="color: #64748b; margin-bottom: 0; font-size: 1rem;">
+                        Średnia: <strong class="text-success fs-5">{{ happiest_info.avg }}</strong> / 5.0 <br>
+                        <small class="text-muted">(Wyliczone na podstawie {{ happiest_info.count }} ocen)</small>
+                    </p>
+                {% else %}
+                    <p style="color: #94a3b8; margin-top: 25px; font-style: italic;">Brak opinii w tym tygodniu.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px;">
+        <div class="chart-wrapper" style="background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h4 style="margin-top: 0; color: #334155;">Rozkład emocji w czasie tygodnia</h4>
+            <canvas id="emotionsTimeChart"></canvas>
+        </div>
+
+        <div class="chart-wrapper" style="background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h4 style="margin-top: 0; color: #334155;">Skumulowane trendy</h4>
+            <canvas id="weeklyTrendsChart"></canvas>
+        </div>
+
+        <div class="chart-wrapper" style="grid-column: 1 / -1; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h4 style="margin-top: 0; color: #334155;">Najpopularniejsze lokalizacje (w tym tygodniu)</h4>
+            <canvas id="locationsChart" style="max-height: 400px;"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const timeData = {{ emotions_over_time_json|safe }};
+    const weeklyData = {{ weekly_trends_json|safe }};
+    const locationsData = {{ popular_locations_json|safe }};
+
+    // Estetyczna paleta dostosowana pod wykresy CityFeel
+    const colorPalette = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
+
+    // Wykres 1
+    const dates = [...new Set(timeData.map(item => item.date))].sort();
+    const emotions = [...new Set(timeData.map(item => item.emotion))];
+
+    const datasetsTime = emotions.map((emotion, index) => ({
+        label: emotion || 'Nieznane',
+        data: dates.map(date => {
+            const record = timeData.find(d => d.date === date && d.emotion === emotion);
+            return record ? record.count : 0;
+        }),
+        borderColor: colorPalette[index % colorPalette.length],
+        tension: 0.3,
+        fill: false
+    }));
+
+    new Chart(document.getElementById('emotionsTimeChart'), {
+        type: 'line',
+        data: {labels: dates, datasets: datasetsTime},
+        options: {responsive: true}
+    });
+
+    // Wykres 2
+    const datasetsWeekly = emotions.map((emotion, index) => ({
+        label: emotion || 'Nieznane',
+        data: [2, 3, 4, 5, 6, 7, 1].map(day => {
+            const record = weeklyData.find(d => d.weekday === day && d.emotion === emotion);
+            return record ? record.count : 0;
+        }),
+        backgroundColor: colorPalette[index % colorPalette.length]
+    }));
+
+    new Chart(document.getElementById('weeklyTrendsChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'],
+            datasets: datasetsWeekly
+        },
+        options: {
+            responsive: true,
+            scales: {x: {stacked: true}, y: {stacked: true}}
+        }
+    });
+
+    // Wykres 3
+    const locLabels = locationsData.map(d => d.location__name || 'Nieznana');
+    const locCounts = locationsData.map(d => d.count);
+
+    new Chart(document.getElementById('locationsChart'), {
+        type: 'bar',
+        data: {
+            labels: locLabels,
+            datasets: [{
+                label: 'Liczba wpisów',
+                data: locCounts,
+                backgroundColor: '#3b82f6',
+                borderRadius: 4
+            }]
+        },
+        options: {responsive: true}
+    });
+});
+</script>
+{% endblock %}

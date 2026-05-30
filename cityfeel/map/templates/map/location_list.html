@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Lista Lokalizacji - CityFeel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<style>
+    .location-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+
+    /* Poprawki wyglądu Choices.js pod Bootstrapa */
+    .choices__inner { border-radius: 0.375rem; border: 1px solid #dee2e6; background-color: #fff; padding: 4.5px 7.5px; }
+    .choices__input { background-color: transparent; }
+    .choices__list--multiple .choices__item { background-color: #0d6efd; border: 1px solid #0a58ca; border-radius: 4px; }
+
+    /* Wymuszamy, by lista opcji ZAWSZE była nad małą mapą (wysoki z-index) */
+    .choices-wrapper { position: relative; z-index: 1000; }
+
+    /* Styl dla mini-mapy i jej wrappera */
+    #mapWrapper { position: relative; z-index: 1; transition: all 0.3s ease; border-radius: 0.375rem; }
+    #districtMiniMap { height: 280px; width: 100%; border-radius: inherit; border: 1px solid #dee2e6; z-index: 1; }
+
+    /* Ukrycie irytującego niebieskiego obramowania (focus) po kliknięciu w poligon na mapie */
+    path.leaflet-interactive:focus { outline: none !important; }
+
+    /* Klasa aktywująca duży tryb (Popup) na środku ekranu */
+    .map-expanded {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90vw !important;
+        height: 85vh !important;
+        z-index: 9999 !important; /* Nad wszystkim */
+        box-shadow: 0 0 0 9999px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.5) !important;
+    }
+    .map-expanded #districtMiniMap { height: 100% !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="mb-0 fw-bold">Przeglądaj Miejsca i Opinie</h2>
+            <p class="text-muted">Znajdź lokalizacje, używając inteligentnego wyszukiwania lub klikając na mapie.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 col-xl-3 mb-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold mb-3"><i class="bi bi-funnel"></i> Filtry</h5>
+                    <form method="GET" action="{% url 'map:location_list' %}" id="filterForm">
+
+                        <div class="mb-2 choices-wrapper">
+                            <label class="form-label fw-semibold small">Wybierz dzielnice (Wpisz lub szukaj)</label>
+                            <select name="district" id="districtSelect" multiple>
+                                {% for d in available_districts %}
+                                    <option value="{{ d }}">{{ d }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">LUB Zaznacz na mapie:</label>
+                            <div id="mapWrapper">
+                                <div id="districtMiniMap"></div>
+                                <button type="button" id="expandMapBtn" class="btn btn-light btn-sm shadow position-absolute"
+                                        style="top: 10px; right: 10px; z-index: 1000; border: 1px solid #ccc;"
+                                        title="Powiększ na cały ekran">
+                                    <i class="bi bi-arrows-fullscreen"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 border-top pt-3">
+                            <label class="form-label fw-semibold small">Sortuj według</label>
+                            <select name="sort_by" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit()">
+                                <option value="-last_activity" {% if current_sort == '-last_activity' %}selected{% endif %}>Od najnowszych opinii</option>
+                                <option value="last_activity" {% if current_sort == 'last_activity' %}selected{% endif %}>Od najstarszych opinii</option>
+                                <option value="-avg_emotional_value" {% if current_sort == '-avg_emotional_value' %}selected{% endif %}>Od najwyższej oceny</option>
+                                <option value="avg_emotional_value" {% if current_sort == 'avg_emotional_value' %}selected{% endif %}>Od najniższej oceny</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3 border-top pt-3">
+                            <label class="form-label fw-semibold small">Zakres ocen (Gwiazdki)</label>
+                            <div class="d-flex gap-2 mb-2">
+                                <input type="number" step="0.1" min="1" max="5" name="min_rating" id="min_rating" value="{{ min_rating }}" class="form-control form-control-sm" placeholder="Od (np. 3.5)">
+                                <input type="number" step="0.1" min="1" max="5" name="max_rating" id="max_rating" value="{{ max_rating }}" class="form-control form-control-sm" placeholder="Do (np. 5.0)">
+                            </div>
+                            <div class="d-flex flex-wrap gap-1">
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" style="font-size: 0.75rem;" onclick="setRating(5, 5)">5 gwiazdek</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" style="font-size: 0.75rem;" onclick="setRating(4, 4)">4 gwiazdki</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" style="font-size: 0.75rem;" onclick="setRating(3, 3)">3 gwiazdki</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" style="font-size: 0.75rem;" onclick="setRating(2, 2)">2 gwiazdki</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" style="font-size: 0.75rem;" onclick="setRating(1, 1)">1 gwiazdka</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-2 form-check border-top pt-3">
+                            <input type="checkbox" class="form-check-input" id="hasPhotosCheck" name="has_photos" value="1" {% if has_photos == '1' %}checked{% endif %} onchange="document.getElementById('filterForm').submit()">
+                            <label class="form-check-label small" for="hasPhotosCheck">Tylko ze zdjęciami</label>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="hasCommentsCheck" name="has_comments" value="1" {% if has_comments == '1' %}checked{% endif %} onchange="document.getElementById('filterForm').submit()">
+                            <label class="form-check-label small" for="hasCommentsCheck">Tylko z komentarzami</label>
+                        </div>
+
+                        <div class="d-grid mt-4 gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm fw-bold">Zastosuj filtry</button>
+                            <a href="{% url 'map:location_list' %}" class="btn btn-outline-danger btn-sm">Wyczyść wszystko</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8 col-xl-9">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+                {% for loc in locations %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 location-card" onclick="window.location.href='{% url 'map:location_detail' loc.pk %}'" style="cursor: pointer; transition: transform 0.2s;">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-truncate" title="{{ loc.name }}">{{ loc.name }}</h5>
+
+                            <div class="d-flex align-items-center mb-2">
+                                <span style="color: #f39c12; font-size: 1.2rem;">★</span>
+                                <span class="ms-1 fw-bold">{{ loc.avg_emotional_value|default:"Brak"|floatformat:1 }}</span>
+                                <span class="text-muted small ms-2">({{ loc.emotion_points_count }} ocen)</span>
+                            </div>
+
+                            <div class="d-flex gap-3 text-muted small mb-3">
+                                <span><i class="bi bi-chat-text"></i> {{ loc.comments_count }}</span>
+                                <span><i class="bi bi-camera"></i> {{ loc.photos_count }}</span>
+                            </div>
+
+                            <p class="card-text small text-muted">
+                                Ostatnia opinia: <br>
+                                <strong>{{ loc.last_activity|date:"d M Y, H:i"|default:"Brak opinii" }}</strong>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-white border-top-0 pt-0">
+                            <a href="{% url 'map:location_detail' loc.pk %}" class="btn btn-outline-primary btn-sm w-100">Zobacz szczegóły</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
+                        <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                        <div>
+                            <strong>Brak wyników!</strong><br>
+                            Nie znaleziono lokalizacji spełniających Twoje kryteria. Zmień dzielnicę lub ocenę.
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if is_paginated %}
+            <nav class="mt-5">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ query_string }}">Poprzednia</a></li>
+                    {% endif %}
+
+                    <li class="page-item active"><span class="page-link">{{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span></li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ query_string }}">Następna</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+    function setRating(min, max) {
+        document.getElementById('min_rating').value = min;
+        document.getElementById('max_rating').value = max;
+        document.getElementById('filterForm').submit();
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+
+        // 1. Odbieramy dane z Django
+        const currentDistricts = {{ current_districts_json|safe }};
+        const geojsonData = {{ geojson_data|safe }};
+
+        // 2. Uruchamiamy pole wyszukiwania (Choices.js)
+        const districtSelect = document.getElementById('districtSelect');
+        const choices = new Choices(districtSelect, {
+            removeItemButton: true,
+            searchPlaceholderValue: "Szukaj dzielnicy (np. Wrz...)",
+            placeholderValue: "Cały Gdańsk (brak wyboru)",
+            noResultsText: "Nie znaleziono dzielnicy",
+            itemSelectText: "Wciśnij Enter by wybrać",
+            sorter: function(a, b) {
+                return a.label.localeCompare(b.label, 'pl');
+            }
+        });
+
+        if (currentDistricts && currentDistricts.length > 0) {
+            choices.setChoiceByValue(currentDistricts);
+        }
+
+        if (!geojsonData) {
+            document.getElementById('districtMiniMap').innerHTML = '<div class="p-3 text-center text-muted small">Brak pliku export.geojson do wyrysowania mapy.</div>';
+            return;
+        }
+
+        // 3. Inicjalizacja Mini-Mapy
+        const miniMap = L.map('districtMiniMap', { zoomControl: false }).setView([54.352, 18.646], 10);
+        L.control.zoom({ position: 'bottomright' }).addTo(miniMap);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(miniMap);
+
+        let geojsonLayer;
+
+        function getStyle(feature) {
+            const selectedValues = choices.getValue(true) || [];
+            const isSelected = selectedValues.includes(feature.properties.name);
+
+            return {
+                fillColor: isSelected ? '#0d6efd' : '#6c757d',
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: isSelected ? 0.6 : 0.15
+            };
+        }
+
+        function onEachFeature(feature, layer) {
+            layer.bindTooltip(feature.properties.name, { direction: 'center', className: 'fw-bold' });
+
+            layer.on({
+                mouseover: function(e) {
+                    const l = e.target;
+                    l.setStyle({ fillOpacity: 0.8, weight: 3 });
+                },
+                mouseout: function(e) {
+                    geojsonLayer.resetStyle(e.target);
+                },
+                click: function(e) {
+                    const name = feature.properties.name;
+                    const selectedValues = choices.getValue(true) || [];
+
+                    if (selectedValues.includes(name)) {
+                        choices.removeActiveItemsByValue(name);
+                    } else {
+                        choices.setChoiceByValue(name);
+                    }
+                    geojsonLayer.setStyle(getStyle);
+                }
+            });
+        }
+
+        geojsonLayer = L.geoJSON(geojsonData, {
+            filter: function(feature) {
+                return feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon';
+            },
+            style: getStyle,
+            onEachFeature: onEachFeature
+        }).addTo(miniMap);
+
+        miniMap.fitBounds(geojsonLayer.getBounds());
+
+        districtSelect.addEventListener('change', function() {
+            geojsonLayer.setStyle(getStyle);
+        });
+
+        // 4. OBSŁUGA POWIĘKSZANIA MAPY (FULLSCREEN POPUP)
+        const expandBtn = document.getElementById('expandMapBtn');
+        const mapWrapper = document.getElementById('mapWrapper');
+        const expandIcon = expandBtn.querySelector('i');
+
+        expandBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            mapWrapper.classList.toggle('map-expanded');
+
+            if (mapWrapper.classList.contains('map-expanded')) {
+                // Zmieniamy ikonę na "Zmniejsz" i blokujemy scrollowanie strony pod spodem
+                expandIcon.classList.remove('bi-arrows-fullscreen');
+                expandIcon.classList.add('bi-fullscreen-exit');
+                expandBtn.title = "Zamknij dużą mapę";
+                document.body.style.overflow = 'hidden';
+            } else {
+                // Wracamy do oryginału
+                expandIcon.classList.remove('bi-fullscreen-exit');
+                expandIcon.classList.add('bi-arrows-fullscreen');
+                expandBtn.title = "Powiększ na cały ekran";
+                document.body.style.overflow = '';
+            }
+
+            // Mówimy Leafletowi, że okno zmieniło rozmiar, by na nowo dorysował kafelki
+            setTimeout(function() {
+                miniMap.invalidateSize();
+                if (geojsonLayer) {
+                    miniMap.fitBounds(geojsonLayer.getBounds());
+                }
+            }, 350); // Opóźnienie równe animacji CSS (0.3s)
+        });
+    });
+</script>
+{% endblock %}

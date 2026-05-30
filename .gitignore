@@ -11,3 +11,7 @@ db.sqlite3
 # Media files (user uploads)
 /media/
 .vs/ 
+
+# Ignoruj pliki wygenerowane przez skrypty testowe
+test_users.txt
+cityfeel/fixtures/test_users.txt

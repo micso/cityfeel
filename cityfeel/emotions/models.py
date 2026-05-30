@@ -50,6 +50,7 @@ class EmotionPoint(models.Model):
     )
 
     emotional_value = models.PositiveSmallIntegerField(
+        db_index= True,
         validators=[
             MinValueValidator(MIN_EMOTIONAL_VALUE),
             MaxValueValidator(MAX_EMOTIONAL_VALUE)
@@ -65,6 +66,7 @@ class EmotionPoint(models.Model):
     )
 
     created_at = models.DateTimeField(
+        db_index=True,
         auto_now_add=True,
         help_text="Kiedy ten punkt emocji został utworzony"
     )

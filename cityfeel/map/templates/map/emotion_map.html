@@ -3,6 +3,18 @@
 
 {% block title %}Mapa Emocji - CityFeel{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
+<style>
+    /* Estetyczne poprawki Wehikułu Czasu */
+    #exactTimePicker::placeholder { color: #6c757d; opacity: 0.9; font-weight: 500; }
+    #exactTimePicker:focus { box-shadow: none; outline: none; }
+    .tf-presets { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+</style>
+{% endblock %}
+
 {% block main_attrs %}style="padding: 0; margin: 0; height: calc(100vh - 63px);"{% endblock %}
 
 {% block content %}
@@ -98,6 +110,16 @@
                 <button type="button" class="tf-preset" data-preset="week">Tydzień</button>
                 <button type="button" class="tf-preset" data-preset="month">Miesiąc</button>
                 <button type="button" class="tf-preset" data-preset="year">Rok</button>
+
+                <div class="ms-1 d-flex align-items-center gap-1" style="display: inline-block;">
+                    <div class="input-group input-group-sm shadow-sm" style="width: 175px; border-radius: 20px; overflow: hidden; border: 1px solid #ced4da;">
+                        <span class="input-group-text bg-white border-0 text-primary py-1"><i class="bi bi-clock-history"></i></span>
+                        <input type="text" id="exactTimePicker" class="form-control border-0 ps-0 py-1" placeholder="Wehikuł czasu..." style="font-size: 0.75rem; cursor: pointer; background-color: white;" readonly>
+                    </div>
+                    <button type="button" id="clearTimePicker" class="btn btn-sm btn-outline-secondary rounded-circle d-none d-flex align-items-center justify-content-center" style="width: 22px; height: 22px; padding: 0; margin-left: 4px;" title="Resetuj datę">
+                        <i class="bi bi-x" style="font-size: 1rem;"></i>
+                    </button>
+                </div>
             </div>
             <button type="button" id="playAnimation" class="tf-play" disabled>
                 <span id="playIcon" class="tf-play-icon">▶</span>
@@ -131,7 +153,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
             </div>
             <div class="modal-body">
-                <div id="proximityInfo" class="alert d-none mb-3" role="alert"><span id="proximityText"></span></div>
+
+                <div id="proximityAlert" class="alert d-none mb-3 shadow-sm" role="alert">
+                    <p class="mb-2 fw-semibold" id="proximityText" style="margin-bottom: 0;"></p>
+                    <div id="proximityChoices" class="d-none mt-2 pt-2 border-top border-secondary border-opacity-25">
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="radio" name="locationChoice" id="choiceExisting" value="existing" checked>
+                            <label class="form-check-label fw-medium" for="choiceExisting">
+                                Dołącz opinię do istniejącego miejsca
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="locationChoice" id="choiceNew" value="new">
+                            <label class="form-check-label fw-medium" for="choiceNew">
+                                Utwórz zupełnie nową lokalizację
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="emotionErrors" class="alert alert-danger d-none mb-3" role="alert"></div>
                 <div class="mb-3 d-none" id="locationNameContainer">
                     <label for="locationName" class="form-label fw-semibold">Nazwa lokalizacji</label>
@@ -202,10 +242,54 @@
 
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
 <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/pl.js"></script>
+
+<script>
+    // Inicjalizacja ładnego kalendarza po załadowaniu strony
+    document.addEventListener("DOMContentLoaded", function() {
+        const clearBtn = document.getElementById('clearTimePicker');
+
+        const fp = flatpickr("#exactTimePicker", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            locale: "pl",
+            onChange: function(selectedDates, dateStr, instance) {
+                // Zaktualizowanie osi czasu po wyborze daty
+                const input = document.getElementById('exactTimePicker');
+                input.value = dateStr;
+                input.dispatchEvent(new Event('change'));
+
+                // Pokazanie przycisku czyszczenia "X"
+                if (dateStr) {
+                    clearBtn.classList.remove('d-none');
+                }
+            }
+        });
+
+        // Obsługa kliknięcia w krzyżyk "X"
+        clearBtn.addEventListener('click', function() {
+            fp.clear(); // Wyzerowanie Flatpickr
+            clearBtn.classList.add('d-none'); // Ukrycie przycisku "X"
+
+            // Symulacja kliknięcia w filtr "Wszystko" pod mapą
+            const allPresetBtn = document.querySelector('.tf-preset[data-preset="all"]');
+            if (allPresetBtn) allPresetBtn.click();
+        });
+
+        // Ukrywanie "X", gdy użytkownik kliknie w inny filtr czasowy ręcznie (np. Tydzień)
+        document.querySelectorAll('.tf-preset').forEach(btn => {
+            btn.addEventListener('click', function() {
+                fp.clear();
+                clearBtn.classList.add('d-none');
+            });
+        });
+    });
+</script>
 
 <script src="{% static 'js/map.js' %}"></script>
 {% endblock %}
